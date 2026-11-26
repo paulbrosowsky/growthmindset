@@ -917,7 +917,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                   aria-current={tab === id ? "page" : undefined}
                 >
                   {tab === id && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
-                  <Icon name={icon} />
+                  <Icon name={icon} size={16} />
                   {label}
                   <AnimatePresence>
                     {id === "coach" && unread && <motion.i className="udot" initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} exit={{ scale: 0 }} />}

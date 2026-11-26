@@ -165,7 +165,7 @@
   /* ---------- Konzept-Grundbausteine ---------- */
   .scr {
     flex: 1;
-    padding: 10px 16px 86px;
+    padding: 10px 16px 72px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -266,15 +266,15 @@
   }
   .nav {
     position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    height: 62px;
-    border-radius: 24px;
+    left: 22px;
+    right: 22px;
+    bottom: 10px;
+    height: 50px;
+    border-radius: 20px;
     background: var(--s);
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    padding: 7px;
+    padding: 5px;
     box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.25);
     z-index: 5;
   }
@@ -284,11 +284,11 @@
     display: grid;
     place-items: center;
     align-content: center;
-    gap: 2px;
-    font-size: 10.5px;
+    gap: 1px;
+    font-size: 9.5px;
     font-weight: 600;
     color: var(--t2);
-    border-radius: 18px;
+    border-radius: 15px;
     text-align: center;
   }
   .nav button.on {
@@ -297,14 +297,14 @@
   .nav-pill {
     position: absolute;
     inset: 0;
-    border-radius: 18px;
+    border-radius: 15px;
     background: var(--at);
     z-index: -1;
   }
   .udot {
     position: absolute;
-    top: 6px;
-    right: calc(50% - 15px);
+    top: 4px;
+    right: calc(50% - 13px);
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -881,7 +881,7 @@
     justify-content: center;
   }
   .app:has(.nav) .toasts {
-    bottom: 82px;
+    bottom: 68px;
   }
   .app:has(.inp) .toasts {
     bottom: 76px;
