@@ -112,10 +112,10 @@ export function Home({
         </div>
         <div style={{ display: "grid", justifyItems: "center", margin: "24px 0 30px" }}>
           <ConcentricRings
-            size={188}
-            width={8}
-            gap={15}
-            outer={88}
+            size={224}
+            width={10}
+            gap={18}
+            outer={106}
             rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}
           >
             <b className="lvl-big">

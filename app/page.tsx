@@ -84,6 +84,7 @@ export default function Home() {
           </span>
         </div>
         <form
+          style={{ display: "grid", gap: 14 }}
           onSubmit={(e) => {
             e.preventDefault();
             void enter(name);
