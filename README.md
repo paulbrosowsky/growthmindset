@@ -1,0 +1,54 @@
+# Kompass: persönlicher KI-Lern-Coach
+
+Hackathon-Prototyp zur Challenge „Growth Mindset: lebenslanges Lernen im Arbeitsalltag“ (AOK Neckar-Fils).
+
+Kompass begleitet Mitarbeitende beim Lernen im Arbeitsalltag nach 70/20/10: Onboarding im Chat, persönliche Lernreise (Kompetenzbereiche als Planeten), XP, Level, Abzeichen und Team-Challenge, und ein vollständiger Learning Loop am Beispiel „Präsentieren“: vorbereiten, Slides erstellen, Generalprobe per Video mit KI-Analyse, Termin merken, aktiv nachfragen, reflektieren, Feedback der Kollegen einholen, Lernpfad erweitern.
+
+## Starten
+
+```bash
+npm install
+cp .env.example .env.local   # ANTHROPIC_API_KEY eintragen
+npm run dev                  # http://localhost:3000
+```
+
+Ohne `ANTHROPIC_API_KEY` läuft die App im **Skript-Modus** mit vorbereiteten Antworten. So funktioniert die Demo auch ohne Netz oder Key.
+
+## Konfiguration
+
+| Variable | Zweck |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Claude API Key, schaltet die Live-KI ein |
+| `CLAUDE_MODEL` | Optional, Standard `claude-opus-5-5` |
+| `DATABASE_URL` | Optional, Postgres (z. B. Vercel Postgres oder Neon). Ohne: JSON-Dateien in `.data/` |
+
+## Deployment auf Vercel
+
+1. Repo in Vercel importieren (Framework wird als Next.js erkannt).
+2. Unter Settings, Environment Variables `ANTHROPIC_API_KEY` eintragen.
+3. Unter Storage eine Postgres-Datenbank (Neon) anlegen und verbinden. Vercel setzt `DATABASE_URL` bzw. `POSTGRES_URL` automatisch. Die Tabelle legt die App selbst an.
+4. Deployen. Kamera und Mikrofon funktionieren nur über HTTPS, das ist bei Vercel automatisch der Fall.
+
+Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo mit vielen Handys daher Postgres verbinden.
+
+## Demo-Ablauf
+
+1. Username wählen (kein Passwort), kurzes Onboarding im Chat.
+2. Lernreise ansehen: Präsentieren steht bei 52 %.
+3. „Hey, ich muss morgen präsentieren“ → Thema → drei Vorschläge → Option 3 → „Slides vorbereiten“.
+4. Generalprobe aufnehmen (Kamera, Upload oder Beispiel-Analyse) → Feedback, Fortschritt steigt.
+5. Termin nennen, z. B. „Morgen um 10:00“.
+6. Menü **Demo → Zeitsprung nach der Präsentation**: Kompass fragt von sich aus nach.
+7. Reflexion, Kollegen-Feedback anfragen (simuliert), Lernpfad wird erweitert, Level-Up.
+
+**Demo → Profil zurücksetzen** startet von vorn.
+
+## Aufbau
+
+- `lib/knowledge.ts`: generierter Firmenkontext (Neckartal Systemtechnik GmbH), Kompetenzmodell, Katalog, Lernmethoden
+- `lib/claude.ts`: Claude-Aufrufe mit Structured Outputs, Prompt Caching und serverseitigem Fallback
+- `app/api/ai/route.ts`: die KI-Aufgaben (Begrüßung, Vorschläge, Slides, Videoanalyse, Reflexion, Kollegen-Feedback, Lernpfad-Update, freier Chat)
+- `lib/fallbacks.ts`: Skript-Antworten, wenn die KI nicht verfügbar ist
+- `components/Coach.tsx`: Chat und Demo-Ablauf, `components/Panel.tsx`: Lernreise, Erfahrungen, Team, Unternehmen
+
+Videoanalyse: Claude verarbeitet Bilder und Text, aber kein Video oder Audio direkt. Der Browser zieht deshalb 5 Standbilder aus der Aufnahme und schreibt die Sprache per Spracherkennung mit (Chrome, Edge, Safari). Nur Standbilder und Text gehen an den Server.
