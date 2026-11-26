@@ -129,7 +129,7 @@ export default function Rehearsal({
           </div>
           <MCard initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="row between" style={{ marginBottom: 8 }}>
-              <b>Kompass analysiert</b>
+              <b>LENA analysiert</b>
               <span className="mut xs">ca. 15 s</span>
             </div>
             <div style={{ display: "grid", gap: 6, fontSize: 12 }}>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Dashboard, { type View } from "@/components/dashboard/Dashboard";
 
 export const metadata: Metadata = {
-  title: "Kompass · Unternehmenssicht",
+  title: "LENA · Unternehmenssicht",
   description: "Personalentwicklung im DRK-Kreisverband Musterstadt: Teamübersicht und Strategiesicht",
 };
 

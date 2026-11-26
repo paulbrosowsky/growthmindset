@@ -171,7 +171,7 @@ function collectDates(state: AppState, now: Date): DateItem[] {
   if (state.profile) {
     const g = new Date(dayStart(new Date(state.goalSetAt || state.createdAt)) + 28 * DAY);
     g.setHours(9, 0, 0, 0);
-    items.push({ id: "ziel", at: g, title: "Lernziel-Check-in", sub: "mit Kompass", kind: "ziel" });
+    items.push({ id: "ziel", at: g, title: "Lernziel-Check-in", sub: "mit LENA", kind: "ziel" });
   }
   for (const f of FIXED_DATES) items.push({ id: f.id, at: at(f.days, f.hour), title: f.title, sub: f.sub, kind: "termin" });
   return items.filter((i) => dayStart(i.at) >= dayStart(now)).sort((a, b) => a.at.getTime() - b.at.getTime());
@@ -317,7 +317,7 @@ export function GoalsView({
             </div>
           </>
         ) : (
-          <div className="mut xs">Dein Lernziel vereinbarst du mit Kompass im Coach.</div>
+          <div className="mut xs">Dein Lernziel vereinbarst du mit LENA im Coach.</div>
         )}
       </MCard>
 
@@ -538,7 +538,7 @@ export function PathView({ state, now, onBack, onPrepare, onDone }: { state: App
                       onPrepare(c);
                     }}
                   >
-                    Mit Kompass vorbereiten
+                    Mit LENA vorbereiten
                   </Button>
                   <Button
                     variant="outline"

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Kompass · Designkonzept „Graphit & Gelb“, als shadcn/ui-Theme */
+/* LENA · Designkonzept „Graphit & Gelb“, als shadcn/ui-Theme */
 :root {
   --radius: 1.375rem;
   --background: #f3f3f0;
@@ -407,7 +407,7 @@
   .inp input::placeholder {
     color: var(--t2);
   }
-  /* Sprachgespräch: Knopf pulsiert, solange Kompass zuhört oder spricht */
+  /* Sprachgespräch: Knopf pulsiert, solange LENA zuhört oder spricht */
   .inp.voice .send {
     background: var(--acc);
     color: #fff;

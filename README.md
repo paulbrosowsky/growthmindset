@@ -1,8 +1,8 @@
-# Kompass: persönlicher KI-Lern-Coach
+# LENA: persönlicher KI-Lern-Coach
 
 Hackathon-Prototyp zur Challenge „Growth Mindset: lebenslanges Lernen im Arbeitsalltag“ (AOK Neckar-Fils).
 
-Kompass begleitet Mitarbeitende beim Lernen im Arbeitsalltag nach 70/20/10: Onboarding im Chat, persönliche Lernreise (Kompetenzbereiche als Planeten), XP, Level, Abzeichen und Team-Challenge, und ein vollständiger Learning Loop am Beispiel „Präsentieren“: vorbereiten, Slides erstellen, Generalprobe per Video mit KI-Analyse, Termin merken, aktiv nachfragen, reflektieren, Feedback der Kollegen einholen, Lernpfad erweitern.
+LENA begleitet Mitarbeitende beim Lernen im Arbeitsalltag nach 70/20/10: Onboarding im Chat, persönliche Lernreise (Kompetenzbereiche als Planeten), XP, Level, Abzeichen und Team-Challenge, und ein vollständiger Learning Loop am Beispiel „Präsentieren“: vorbereiten, Slides erstellen, Generalprobe per Video mit KI-Analyse, Termin merken, aktiv nachfragen, reflektieren, Feedback der Kollegen einholen, Lernpfad erweitern.
 
 ## Starten
 
@@ -40,10 +40,10 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 3. „Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen“ → drei Vorschläge → Option 3 → „Slides vorbereiten“.
 4. Generalprobe aufnehmen (Kamera, Upload oder Beispiel-Analyse) → Feedback, Fortschritt steigt.
 5. Termin nennen, z. B. „Morgen um 10:00“.
-6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von Kompass.
+6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von LENA.
 7. Reflexion, Kollegen-Feedback anfragen (simuliert), Lernpfad wird erweitert, Level-Up.
 
-8. **Unternehmenssicht**: Nach einer „Anwenden“-Challenge oder dem ganzen Lernpfad fragt Kompass „Erfolg teilen?“ (in der Demo-Steuerung auch direkt über „Teilen“). Max wählt, was die Wachenleitung sieht, Coach-Inhalte bleiben privat. Danach `/dashboard` öffnen (Demo-Steuerung → „Dashboard“): Der Erfolg erscheint bei der Wachenleitung. Oben rechts bzw. mit den Tasten 1 und 2 zwischen **Wachenleitung** und **Personalabteilung** (`/dashboard?view=hr`, nur zusammengefasste Werte) umschalten. Alle Kennzahlen dort sind Dummy-Daten (`lib/dashboardDemo.ts`), nur die geteilten Erfolge kommen live aus der App.
+8. **Unternehmenssicht**: Nach einer „Anwenden“-Challenge oder dem ganzen Lernpfad fragt LENA „Erfolg teilen?“ (in der Demo-Steuerung auch direkt über „Teilen“). Max wählt, was die Wachenleitung sieht, Coach-Inhalte bleiben privat. Danach `/dashboard` öffnen (Demo-Steuerung → „Dashboard“): Der Erfolg erscheint bei der Wachenleitung. Oben rechts bzw. mit den Tasten 1 und 2 zwischen **Wachenleitung** und **Personalabteilung** (`/dashboard?view=hr`, nur zusammengefasste Werte) umschalten. Alle Kennzahlen dort sind Dummy-Daten (`lib/dashboardDemo.ts`), nur die geteilten Erfolge kommen live aus der App.
 
 In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für die Jury und **Profil zurücksetzen**.
 
@@ -61,6 +61,6 @@ In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für
 - `components/views.tsx`: Reise mit Kompetenzbereichen, Team, Erfolge, Demo-Steuerung; `components/Cards.tsx`: Karten im Chat
 - UI: Tailwind CSS 4 mit [shadcn/ui](https://ui.shadcn.com) (`components/shadcn/`), Theme „Graphit & Gelb“ in `app/globals.css`; Animationen mit [Motion](https://motion.dev)
 
-Sprachgespräch: Bei leerem Eingabefeld startet der Senden-Knopf (Mikrofon) ein Gespräch mit Kompass über die OpenAI Realtime API (WebRTC, `lib/voiceClient.ts`). `/api/realtime` erzeugt ein kurzlebiges Client-Secret mit demselben Coach-Prompt wie der Text-Chat (`lib/realtime.ts`). Im Kennenlernen speichert die Stimme die 8 Themen per Werkzeug, die Profil-Karte und der Lernpfad entstehen wie im Text über Claude; im Chat landen gesetzte Ziele im Lernpfad und fachliche Fragen werden in den SAA und BPR nachgeschlagen. Gesprochenes erscheint als Text im Chat, Getipptes geht während des Gesprächs an Kompass. Stoppen führt das Kennenlernen schriftlich fort.
+Sprachgespräch: Bei leerem Eingabefeld startet der Senden-Knopf (Mikrofon) ein Gespräch mit LENA über die OpenAI Realtime API (WebRTC, `lib/voiceClient.ts`). `/api/realtime` erzeugt ein kurzlebiges Client-Secret mit demselben Coach-Prompt wie der Text-Chat (`lib/realtime.ts`). Im Kennenlernen speichert die Stimme die 8 Themen per Werkzeug, die Profil-Karte und der Lernpfad entstehen wie im Text über Claude; im Chat landen gesetzte Ziele im Lernpfad und fachliche Fragen werden in den SAA und BPR nachgeschlagen. Gesprochenes erscheint als Text im Chat, Getipptes geht während des Gesprächs an LENA. Stoppen führt das Kennenlernen schriftlich fort.
 
 Videoanalyse: Claude verarbeitet Bilder und Text, aber kein Video oder Audio direkt. Der Browser zieht deshalb 5 Standbilder aus der Aufnahme und schreibt die Sprache per Spracherkennung mit (Chrome, Edge, Safari). Nur Standbilder und Text gehen an den Server.

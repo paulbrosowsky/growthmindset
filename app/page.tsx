@@ -97,7 +97,7 @@ export default function Home() {
           <span className="gate-logo">
             <Icon name="logo" size={46} style={{ strokeWidth: 1.5 }} />
           </span>
-          <b>Kompass</b>
+          <b>LENA</b>
           <span className="mut">
             Dein persönlicher Lern-Coach
             <br />

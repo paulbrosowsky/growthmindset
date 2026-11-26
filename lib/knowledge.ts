@@ -352,7 +352,7 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
       ch("p1", "fach", "Fall nach <c>ABCDE aufbereiten", "Lernen", 15, "Ordne den Einsatz entlang der <c>ABCDE-Herangehensweise, bevor du Folien baust.", ["<c>ABCDE – Herangehensweise"]),
       ch("p2", "komm", "Einstieg in 30 Sekunden", "Üben", 10, "Ein Satz, der die Runde sofort an die Einsatzstelle holt."),
       ch("p3", "meth", "Einsatzprotokoll als Quelle", "Lernen", 15, "Zeitstrahl und Befunde aus der Doku, vollständig anonymisiert."),
-      ch("p4", "komm", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass Kompass Feedback geben."),
+      ch("p4", "komm", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass LENA Feedback geben."),
       ch("p5", "komm", "Souverän mit Rückfragen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
       ch("p6", "fach", "Bezug zum BPR Polytrauma", "Anwenden", 20, "Zeig, wo ihr nach dem Behandlungspfad vorgegangen seid und wo bewusst nicht.", ["Polytrauma"]),
       ch("p7", "komm", "Stimme und Pausen", "Üben", 10, "Pausen wirken sicherer als schnelle Sätze."),
@@ -367,11 +367,11 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
       ch("t1", "fach", "<c>ABCDE-Herangehensweise auffrischen", "Lernen", 15, "Die Reihenfolge aus dem BPR, die in jedem Traumaeinsatz trägt.", ["<c>ABCDE – Herangehensweise"]),
       ch("t2", "fach", "Kritische Blutung stoppen", "Üben", 15, "Kompression bis Tourniquet am Phantom, entlang BPR und SAA.", ["Kritische Blutung", "Tourniquet"]),
       ch("t3", "fach", "Beckenschlinge anlegen", "Üben", 15, "Indikation und sichere Anlage nach SAA, mit einer Kollegin üben.", ["Beckenschlinge"]),
-      ch("t4", "meth", "Wissenscheck BPR Polytrauma", "Lernen", 10, "Kompass stellt dir fünf Fragen zum Behandlungspfad, eine nach der anderen.", ["Polytrauma"]),
+      ch("t4", "meth", "Wissenscheck BPR Polytrauma", "Lernen", 10, "LENA stellt dir fünf Fragen zum Behandlungspfad, eine nach der anderen.", ["Polytrauma"]),
       ch("t5", "komm", "Closed-Loop im Team", "Üben", 10, "Ansage, Wiederholen, Bestätigen: klare Kommunikation unter Druck."),
       ch("t6", "fach", "Für F02 anmelden", "Anwenden", 10, "Traumamanagement Advanced, 2 Tage. Sprich den Termin mit der Wachenleitung ab."),
       ch("t7", "komm", "Übergabe nach SINNHAFT", "Üben", 10, "Strukturierte Übergabe im Schockraum nach der Handreichung, in unter einer Minute.", ["SINNHAFT"]),
-      ch("t8", "meth", "Fallbeispiel Polytrauma durchspielen", "Üben", 20, "Kompass spielt einen Einsatz mit dir durch, du entscheidest Schritt für Schritt.", ["Polytrauma", "Schock"]),
+      ch("t8", "meth", "Fallbeispiel Polytrauma durchspielen", "Üben", 20, "LENA spielt einen Einsatz mit dir durch, du entscheidest Schritt für Schritt.", ["Polytrauma", "Schock"]),
       ch("t9", "meth", "Debriefing nach dem Einsatz", "Reflexion", 10, "Drei Fragen mit der Crew: Was lief gut, was nicht, was ändern wir?"),
       ch("t10", "selbst", "Reflexion: Was sitzt jetzt?", "Reflexion", 10, "Wo stehst du in der Patientenversorgung, was fehlt noch?"),
     ],
@@ -434,11 +434,11 @@ export function profilePath(p: Profile): GoalPathState {
       ? { area: "fach", title: reads ? `${refShort} lesen und zusammenfassen` : `${refShort} durcharbeiten`, kind: "Lernen", min: 20, text: "Halte die Kernschritte in eigenen Worten fest.", refs: r }
       : { area: "fach", title: "Grundlagen zum Thema sammeln", kind: "Lernen", min: 20, text: "Such dir zwei interne Quellen und fasse sie kurz zusammen." },
     { area: "meth", title: "Struktur auf einer Karte", kind: "Üben", min: 15, text: "Bring den Ablauf auf eine Karte, die du in die Tasche steckst.", refs: r },
-    { area: "fach", title: "Wissenscheck mit Kompass", kind: "Lernen", min: 10, text: "Kompass stellt dir fünf Fragen, eine nach der anderen.", refs: r },
+    { area: "fach", title: "Wissenscheck mit LENA", kind: "Lernen", min: 10, text: "LENA stellt dir fünf Fragen, eine nach der anderen.", refs: r },
     talks
       ? { area: "komm", title: "Mit einer Kollegin austauschen", kind: "Anwenden", min: 15, text: "Erklär ihr den Ablauf und lass dir Rückfragen stellen." }
       : { area: "komm", title: "Einer Kollegin erklären", kind: "Anwenden", min: 15, text: "Erklär den Ablauf in fünf Minuten und lass dir Rückfragen stellen." },
-    { area: "fach", title: "Fallbeispiel durchspielen", kind: "Üben", min: 20, text: "Kompass spielt einen Fall mit dir durch, du erklärst Schritt für Schritt.", refs: r },
+    { area: "fach", title: "Fallbeispiel durchspielen", kind: "Üben", min: 20, text: "LENA spielt einen Fall mit dir durch, du erklärst Schritt für Schritt.", refs: r },
     { area: "komm", title: "Im Alltag ausprobieren", kind: "Anwenden", min: 20, text: when ? `${when[0].toUpperCase() + when.slice(1)}: wende dein Ziel einmal bewusst an.` : "Wende dein Ziel im nächsten Dienst einmal bewusst an." },
     { area: "komm", title: "Feedback einholen", kind: "Anwenden", min: 10, text: "Frag jemanden, der dabei war: Was war klar, was nicht?" },
     { area: "selbst", title: "Reflexion nach 4 Wochen", kind: "Reflexion", min: 10, text: "Was sitzt jetzt, was nimmst du dir als Nächstes vor?" },
@@ -581,7 +581,7 @@ export function initialAreas(): Area[] {
             ["prio", "Prioritäten im Einsatz", 3],
             ["ziel", "Transportziel und Nachforderung", 2],
           ],
-          [r("e1", "Üben", "Fallbeispiel mit Kompass durchspielen", "20 min")],
+          [r("e1", "Üben", "Fallbeispiel mit LENA durchspielen", "20 min")],
         ),
         s(
           "orga",
@@ -804,7 +804,7 @@ export function knowledgeJSON(): string {
     })),
     fortbildungen: CATALOG.map((c) => ({ id: c.id, titel: c.title, zielgruppe: c.target, dauer: c.duration, turnus: c.turnus })),
     pflichtschulungen: MANDATORY.map((m) => ({ id: m.id, titel: m.title, intervall: m.meta, format: m.format, verpflichtend_fuer: pflichtRoles(m.id) })),
-    kompass_skills: initialAreas().map((a) => ({
+    app_skills: initialAreas().map((a) => ({
       bereich: a.name,
       skills: a.skills.map((sk) => ({ id: sk.id, name: sk.name, teilkompetenzen: Object.fromEntries(sk.subs.map((x) => [x.id, x.name])) })),
     })),

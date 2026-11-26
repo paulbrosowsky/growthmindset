@@ -1,7 +1,7 @@
 // Kennenlernen: 8 Themen in fester Reihenfolge, gilt für Text- und Sprachgespräch.
 // Reihenfolge als Gesprächsbogen: heute (Rolle, Weg, Spaß/Meiden) → Zukunft (3 Jahre) →
 // was dafür zu lernen ist → erster Meilenstein in 4 Wochen → wie und wann gelernt wird.
-// `q` ist die Rückfall-Formulierung; live formuliert Kompass jede Frage passend zur vorigen Antwort.
+// `q` ist die Rückfall-Formulierung; live formuliert LENA jede Frage passend zur vorigen Antwort.
 export type ObKey = "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time";
 
 export const OB_QUESTIONS: { key: ObKey; topic: string; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [

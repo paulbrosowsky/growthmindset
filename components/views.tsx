@@ -238,7 +238,7 @@ export function SkillUpdateView({ state, onBack }: { state: AppState; onBack: ()
             <Icon name="bulb" size={15} />
           </span>
           <div style={{ fontSize: 12 }}>
-            <b>Kompass hat gelernt</b>
+            <b>LENA hat gelernt</b>
             <br />
             {state.memory[0]}
           </div>
@@ -266,7 +266,7 @@ export function TeamView({ state }: { state: AppState }) {
       <div className="hd">
         <div className="t">
           Team
-          <small>{got.length && topic ? `Feedback zu „${shortTopic(topic)}“` : "Deine Kollegen mit eigenem Kompass"}</small>
+          <small>{got.length && topic ? `Feedback zu „${shortTopic(topic)}“` : "Deine Kollegen mit eigener LENA"}</small>
         </div>
         {got.length > 0 && <span className="tag acc">{`${got.length} von ${TEAM.length}`}</span>}
       </div>

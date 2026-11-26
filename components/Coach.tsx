@@ -37,8 +37,8 @@ const VOICE_LABEL: Record<VoiceStatus, string> = {
   connecting: "Verbinde Sprachgespräch …",
   listening: "Ich höre zu, sprich einfach",
   hearing: "Ich höre zu …",
-  thinking: "Kompass überlegt …",
-  speaking: "Kompass spricht …",
+  thinking: "LENA überlegt …",
+  speaking: "LENA spricht …",
 };
 
 /** Das Sprachgespräch übernimmt einen laufenden Text-Ablauf (z. B. mitten im Kennenlernen). */
@@ -50,7 +50,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   const [typing, setTyping] = useState(false);
   const [chips, setChips] = useState<string[]>([]);
   const [multi, setMulti] = useState<{ options: string[]; selected: string[] } | null>(null);
-  const [placeholder, setPlaceholder] = useState("Nachricht an Kompass");
+  const [placeholder, setPlaceholder] = useState("Nachricht an LENA");
   const [input, setInput] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tab, setTabState] = useState<Tab>("coach");
@@ -279,7 +279,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     else if (s.phase === "waiting") setChips(s.presentation?.practiced ? [] : ["Generalprobe starten"]);
     else if (s.phase === "done") setChips(["Was soll ich als Nächstes üben?"]);
     else setChips([]);
-    setPlaceholder("Nachricht an Kompass");
+    setPlaceholder("Nachricht an LENA");
   }
 
   async function onboarding() {
@@ -296,11 +296,11 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     if (resume) {
       // kein erneutes Hallo
     } else if (name.length < 2) {
-      await say(`Hallo, ich bin **Kompass**, dein Lern-Coach bei ${COMPANY.short}. Wie heißt du?`, 400);
+      await say(`Hallo, ich bin **LENA**, dein Lern-Coach bei ${COMPANY.short}. Wie heißt du?`, 400);
       name = (await ask([], "Dein Vorname")).split(/[ ,]/)[0] || "du";
       await say("Schön, dich kennenzulernen. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.");
     } else {
-      await say(`Hallo ${name}, ich bin **Kompass**, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.`, 400);
+      await say(`Hallo ${name}, ich bin **LENA**, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.`, 400);
     }
 
     const answers: Partial<Profile> = resume?.answers || { name };
@@ -312,7 +312,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         .map((m) => ({ from: m.from, text: m.text }));
     let left = MAX_FOLLOWUPS;
     let lead = resume ? "Gut, dann schriftlich weiter." : "";
-    // Vorschläge: Kompass leitet sie aus dem bisherigen Gespräch ab. Die festen Demo-Chips
+    // Vorschläge: LENA leitet sie aus dem bisherigen Gespräch ab. Die festen Demo-Chips
     // erscheinen nur, solange alle Antworten bisher genau die Demo-Antworten waren.
     let demoPath = !resume;
     let suggested: string[] = [];
@@ -431,7 +431,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         return sk ? { name: sk.name, pct: skillProgress(sk), color: area?.color } : null;
       })
       .filter(Boolean) as { name: string; pct: number; color?: string }[];
-    addXP(50, { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
+    addXP(50, { kind: "Start", title: "Onboarding mit LENA abgeschlossen" });
     award("start");
     return { w, focus, path: own };
   }
@@ -720,7 +720,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     toast(`Mit ${x.to.split(" ")[0]} geteilt`);
   }
 
-  /** Lernpfad: Challenge mit Kompass im Coach vorbereiten. */
+  /** Lernpfad: Challenge mit LENA im Coach vorbereiten. */
   function prepChallenge(c: Challenge) {
     setTab("coach");
     if (busyRef.current || sRef.current.phase === "onboarding" || sRef.current.phase === "new") return;
@@ -948,7 +948,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     push({ from: "me", kind: "text", text: t });
     setChips([]);
     setMulti(null);
-    // Im Sprachgespräch geht Getipptes an Kompass; Abläufe mit eigenen Karten beenden das Gespräch.
+    // Im Sprachgespräch geht Getipptes an LENA; Abläufe mit eigenen Karten beenden das Gespräch.
     const v = voiceRef.current;
     if (v && !pending.current) {
       const ph = sRef.current.phase;
@@ -1173,7 +1173,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                         <Icon name="logo" />
                       </span>
                       <div className="t">
-                        Kompass
+                        LENA
                         <small>Dein Coach</small>
                       </div>
                       <motion.button
@@ -1203,7 +1203,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                         <motion.div
                           key="typing"
                           className="msg k typing"
-                          aria-label="Kompass schreibt"
+                          aria-label="LENA schreibt"
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.12 } }}
@@ -1377,7 +1377,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         </div>
 
         <aside className="side">
-          <b style={{ fontSize: 17 }}>Kompass</b>
+          <b style={{ fontSize: 17 }}>LENA</b>
           <p className="mut">Dein persönlicher Lern-Coach bei {COMPANY.short}. Gemacht fürs Handy, hier in Handybreite.</p>
           <p className="mut xs">Demo-Steuerung: Logo im Coach lange drücken oder rechts klicken, oder Shift + Alt + D.</p>
           <Button variant="secondary" onClick={() => setSheet(true)}>

@@ -62,7 +62,7 @@ const turns = (h: VoiceTurn[] | undefined, name: string) =>
   (h || [])
     .filter((t) => t.text)
     .slice(-12)
-    .map((t) => `${t.from === "me" ? name : "Kompass"}: ${t.text}`)
+    .map((t) => `${t.from === "me" ? name : "LENA"}: ${t.text}`)
     .join("\n");
 
 export function voiceInstructions(r: VoiceRequest): string {
@@ -81,7 +81,7 @@ AUFGABE JETZT: Kennenlernen mit ${name}, um gemeinsam ein Lernziel für 4 Wochen
 ${OB_QUESTIONS.map((q, i) => `${i + 1}. ${q.key}: ${q.topic}${q.multi ? " (Möglichkeiten: Praxis und Üben, Videos, Lesen, Austausch; mehrere sind okay, keine Lerntypen)" : ""}`).join("\n")}
 ${known.length ? `\nBereits beantwortet, nicht erneut fragen:\n${known.join("\n")}\n` : ""}${history ? `\nBisheriger Gesprächsverlauf im Chat:\n${history}\n` : ""}
 ABLAUF:
-- ${fresh ? `Beginne mit: „Hallo ${name}, ich bin Kompass, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.“ und stell dann die Frage zum Thema ${open[0]?.key || "role"}.` : open.length ? `Knüpf kurz an das Bisherige an und stell die Frage zum Thema ${open[0].key}.` : "Alle Themen sind beantwortet: ruf profil_erstellen auf."}
+- ${fresh ? `Beginne mit: „Hallo ${name}, ich bin LENA, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.“ und stell dann die Frage zum Thema ${open[0]?.key || "role"}.` : open.length ? `Knüpf kurz an das Bisherige an und stell die Frage zum Thema ${open[0].key}.` : "Alle Themen sind beantwortet: ruf profil_erstellen auf."}
 - Nach jeder Antwort rufst du sofort antwort_speichern auf (Thema und Antwort). Danach 1 kurzer Satz, der ein konkretes Detail der Antwort aufgreift (keine Floskel wie „Spannend“, kein Lob für Talent, nichts erfinden), und die Frage zum nächsten Thema, die an die Antwort anknüpft, als roter Faden.
 - Höchstens 2 Nachfragen im ganzen Gespräch, nur wenn eine Antwort für das Lernziel zu unklar ist. Bei „weiß nicht“ neutral ermutigen, ohne klares Ziel max. 2 Entwicklungsoptionen mit Nutzen anbieten.
 - Vor dem letzten Thema (time) sag „Letzte Frage“.

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kompass · Lern-Coach",
+  title: "LENA · Lern-Coach",
   description: "Persönlicher KI-Lern-Coach für lebenslanges Lernen im Arbeitsalltag",
 };
 

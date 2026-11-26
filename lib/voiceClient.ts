@@ -62,7 +62,7 @@ export class VoiceSession {
       };
       dc.onopen = () => {
         this.h.onStatus("thinking");
-        // Kompass beginnt das Gespräch (Begrüßung bzw. Anknüpfen laut Anweisungen).
+        // LENA beginnt das Gespräch (Begrüßung bzw. Anknüpfen laut Anweisungen).
         this.send({ type: "response.create" });
       };
       const offer = await pc.createOffer();

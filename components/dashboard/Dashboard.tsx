@@ -149,7 +149,7 @@ export default function Dashboard({ initialView }: { initialView: View }) {
             <Compass className="size-[18px]" />
           </span>
           <span className="flex min-w-0 flex-1 flex-col">
-            <b className="text-sm">Kompass</b>
+            <b className="text-sm">LENA</b>
             <span className="truncate text-xs text-muted-foreground">DRK-KV Musterstadt</span>
           </span>
           <ChevronsUpDown className="size-4 text-muted-foreground" />
@@ -365,7 +365,7 @@ function WacheView({ live, now }: { live: LiveItem[]; now: number }) {
           foot="Fahrsicherheitstraining"
           sub={pflichtOpen.map((r) => r.name).join(", ")}
         />
-        <StatCard label="Maßnahmen aktiv" value={7} badge={<TrendBadge up>+2</TrendBadge>} foot="mehr als im Vorquartal" sub="3 davon über Kompass" />
+        <StatCard label="Maßnahmen aktiv" value={7} badge={<TrendBadge up>+2</TrendBadge>} foot="mehr als im Vorquartal" sub="3 davon über LENA" />
         <StatCard
           label="Neu geteilte Erfolge"
           value={live.length}
@@ -426,7 +426,7 @@ function WacheView({ live, now }: { live: LiveItem[]; now: number }) {
                   )}
                   <div className="flex flex-col gap-2 rounded-xl border p-3">
                     <span className="text-xs text-muted-foreground">Maßnahme</span>
-                    <b>Lernen mit Kompass</b>
+                    <b>Lernen mit LENA</b>
                     <StatusBadge status="ok">
                       <CheckCircle2 className="size-3" /> Abgeschlossen
                     </StatusBadge>
@@ -443,7 +443,7 @@ function WacheView({ live, now }: { live: LiveItem[]; now: number }) {
             ) : (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid place-items-center gap-2 rounded-xl border border-dashed py-10 text-center text-muted-foreground">
                 <BookOpen className="size-6" />
-                Noch nichts Neues. Sobald jemand in Kompass „Teilen“ tippt, erscheint es hier.
+                Noch nichts Neues. Sobald jemand in LENA „Teilen“ tippt, erscheint es hier.
               </motion.div>
             )}
           </AnimatePresence>
@@ -619,9 +619,9 @@ function HRView({ live }: { live: LiveItem[] }) {
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
         <StatCard label="Pflichtschulungen gültig" value={`${HR.pflichtPct} %`} badge={<TrendBadge tone="bad">−2 %</TrendBadge>} foot="P03 Fahrsicherheit nur 78 %" sub="alle Rettungswachen" />
-        <StatCard label="Aktive Entwicklungspläne" value={HR.plans} badge={<TrendBadge up>+12</TrendBadge>} foot="seit Einführung von Kompass" sub={`von ${HR.staff} Mitarbeitenden`} />
+        <StatCard label="Aktive Entwicklungspläne" value={HR.plans} badge={<TrendBadge up>+12</TrendBadge>} foot="seit Einführung von LENA" sub={`von ${HR.staff} Mitarbeitenden`} />
         <StatCard
-          label="Nutzen Kompass"
+          label="Nutzen LENA"
           value={HR.kompass}
           badge={
             <Badge variant="outline" className="rounded-md px-2 font-semibold">
