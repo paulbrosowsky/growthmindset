@@ -1402,6 +1402,53 @@
     background: var(--acc);
     color: #fff;
   }
+  .pfad {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #eef1ec;
+  }
+  .pfad .p3d {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+  .pfad-top {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    padding: 10px 16px 18px;
+    display: grid;
+    gap: 8px;
+    background: linear-gradient(rgba(243, 243, 240, 0.96) 55%, rgba(243, 243, 240, 0));
+    pointer-events: none;
+  }
+  .pfad-top .rb {
+    pointer-events: auto;
+  }
+  .pfad-lg {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pfad-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 99px;
+    padding: 4px 9px 4px 5px;
+    box-shadow: 0 2px 8px -4px rgba(0, 0, 0, 0.25);
+  }
+  .pfad-chip b {
+    font-weight: 800;
+  }
+  .pfad .p3d-hint {
+    bottom: 72px;
+  }
   .p3d-hint {
     position: absolute;
     left: 50%;

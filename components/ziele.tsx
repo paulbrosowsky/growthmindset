@@ -28,7 +28,7 @@ import {
 } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
-const Path3D = dynamic(() => import("./Path3D"), { ssr: false, loading: () => <div className="p3d p3d-off" style={{ height: 360 }} /> });
+const Path3D = dynamic(() => import("./Path3D"), { ssr: false, loading: () => <div className="p3d p3d-off" /> });
 
 const WD_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MON_SHORT = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
@@ -455,42 +455,43 @@ export function PathView({ state, now, onBack, onPrepare, onDone }: { state: App
   const areaIds = [...new Set(path.challenges.map((x) => x.area))];
   const ca = c ? areaOf(state, c.area) : undefined;
   return (
-    <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
-      <div className="hd">
-        <button className="rb" onClick={onBack} aria-label="Zurück">
-          <Icon name="back" />
-        </button>
-        <div className="t">
-          <small>
-            Woche {path.week} von 4 · {path.done.length} von {path.challenges.length}
-          </small>
-          {path.title}
+    <div className="pfad">
+      <Path3D
+        stones={path.challenges.map((x, i) => ({ title: x.title, color: areaOf(state, x.area)?.color || "#6B6E76", state: cState(i) }))}
+        onPick={setSel}
+        insetTop={128}
+        insetBottom={110}
+      />
+      <div className="pfad-top">
+        <div className="hd">
+          <button className="rb" onClick={onBack} aria-label="Zurück">
+            <Icon name="back" />
+          </button>
+          <div className="t">
+            <small>
+              Woche {path.week} von 4 · {path.done.length} von {path.challenges.length}
+            </small>
+            {path.title}
+          </div>
         </div>
-      </div>
-
-      <motion.div variants={ITEM} className="p3d-wrap">
-        <Path3D stones={path.challenges.map((x, i) => ({ title: x.title, color: areaOf(state, x.area)?.color || "#6B6E76", state: cState(i) }))} onPick={setSel} height={360} />
-        <span className="p3d-hint">Wischen zum Laufen · Tippen zum Öffnen</span>
-      </motion.div>
-
-      <MCard variants={ITEM}>
-        <div className="plg">
+        <div className="pfad-lg">
           {areaIds.map((id) => {
             const a = areaOf(state, id);
             const all = path.challenges.filter((x) => x.area === id);
             const n = all.filter((x) => path.done.includes(x.id)).length;
             return (
-              <div key={id} className="plg-i">
-                <Ring size={26} width={4} pct={(n / all.length) * 100} color={a?.color || "#6B6E76"} />
-                <b>{a?.name}</b>
-                <span>
+              <span key={id} className="pfad-chip">
+                <Ring size={16} width={3} pct={(n / all.length) * 100} color={a?.color || "#6B6E76"} />
+                {a?.name}
+                <b>
                   {n}/{all.length}
-                </span>
-              </div>
+                </b>
+              </span>
             );
           })}
         </div>
-      </MCard>
+      </div>
+      <span className="p3d-hint">Wischen zum Laufen · Tippen zum Öffnen</span>
 
       <BottomSheet open={!!c} onClose={() => setSel(-1)} title={c?.title || "Challenge"}>
         {c && (
@@ -546,7 +547,7 @@ export function PathView({ state, now, onBack, onPrepare, onDone }: { state: App
           </>
         )}
       </BottomSheet>
-    </motion.div>
+    </div>
   );
 }
 

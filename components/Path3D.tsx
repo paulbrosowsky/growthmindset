@@ -100,7 +100,11 @@ function woodTop(c: string, done: boolean, pale: boolean, rnd: () => number) {
  * Lernpfad in 3D: Kiesweg durch eine Wiese, Challenges als Holzscheiben.
  * Wischen bewegt die Kamera den Weg entlang, Tippen öffnet eine Challenge.
  */
-export default function Path3D({ stones, onPick, height = 380 }: { stones: PathStone[]; onPick: (i: number) => void; height?: number }) {
+/**
+ * insets: Bereiche oben und unten, die von Kopfzeile und Navigation überdeckt werden.
+ * Die Kamera zentriert den Weg im freien Bereich dazwischen, Beschriftungen bleiben dort.
+ */
+export default function Path3D({ stones, onPick, insetTop = 0, insetBottom = 0 }: { stones: PathStone[]; onPick: (i: number) => void; insetTop?: number; insetBottom?: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const pickRef = useRef(onPick);
   pickRef.current = onPick;
@@ -111,7 +115,7 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
     if (!box) return;
     const rnd = rng(7);
     let w = box.clientWidth || 300;
-    const h = height;
+    let h = box.clientHeight || 500;
 
     const cv = document.createElement("canvas");
     cv.setAttribute("aria-label", `3D-Lernpfad mit ${stones.length} Challenges`);
@@ -140,7 +144,14 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
     const S = new THREE.Scene();
     S.background = new THREE.Color(0xeef1ec);
     S.fog = new THREE.Fog(0xeef1ec, 16, 58);
-    const cam = new THREE.PerspectiveCamera(38, w / h, 0.1, 200);
+    const cam = new THREE.PerspectiveCamera(42, w / h, 0.1, 200);
+    // Hochformat: vertikales Sichtfeld so wählen, dass die Wegbreite gleich bleibt.
+    const HFOV = 32;
+    const offset = () => {
+      cam.fov = Math.max(38, (2 * Math.atan(Math.tan((HFOV * Math.PI) / 360) / (w / h)) * 180) / Math.PI);
+      cam.setViewOffset(w, h, 0, -(insetTop - insetBottom) / 2, w, h);
+    };
+    offset();
     S.add(new THREE.HemisphereLight(0xf4f7ff, 0x8e9a6a, 1.3));
     const sun = new THREE.DirectionalLight(0xfff3e0, 2.4);
     sun.castShadow = true;
@@ -320,7 +331,7 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
       const t = clamp(prog),
         p = curve.getPointAt(t),
         ahead = curve.getPointAt(Math.min(1, t + 0.2));
-      cam.position.set(p.x, 5.6, p.z + 5.2);
+      cam.position.set(p.x, 5.6 * Math.min(1.45, Math.max(1, h / w / 1.33)), p.z + 5.2);
       look.set(ahead.x, 0, ahead.z);
       cam.lookAt(look);
       sun.position.set(look.x - 10, 16, look.z + 8);
@@ -354,6 +365,10 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
         const hw = (e.offsetWidth * sc) / 2 + 6;
         const x = Math.max(hw, Math.min(w - hw, ((pv.x + 1) / 2) * w));
         const y = ((1 - pv.y) / 2) * h + 6;
+        if (y < insetTop - 4 || y > h - insetBottom - 24) {
+          e.style.opacity = "0";
+          return;
+        }
         e.style.opacity = String(isCur ? 1 : d > 17 ? Math.max(0, (24 - d) / 7) : 1);
         e.style.transform = `translate(${x}px,${y}px) translateX(-50%) scale(${sc})`;
       });
@@ -397,11 +412,14 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
     cv.addEventListener("wheel", wheel, { passive: false });
 
     const ro = new ResizeObserver(() => {
-      const nw = box.clientWidth;
-      if (!nw || nw === w) return;
+      const nw = box.clientWidth,
+        nh = box.clientHeight;
+      if (!nw || !nh || (nw === w && nh === h)) return;
       w = nw;
+      h = nh;
       R.setSize(w, h, false);
       cam.aspect = w / h;
+      offset();
       cam.updateProjectionMatrix();
     });
     ro.observe(box);
@@ -428,7 +446,7 @@ export default function Path3D({ stones, onPick, height = 380 }: { stones: PathS
       lblBox.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, height]);
+  }, [key, insetTop, insetBottom]);
 
-  return <div ref={wrap} className="p3d" style={{ height }} />;
+  return <div ref={wrap} className="p3d" />;
 }
