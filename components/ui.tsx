@@ -104,14 +104,29 @@ export function Ring({ size, width, pct, color, children }: { size: number; widt
   );
 }
 
-export function ConcentricRings({ size, rings, children }: { size: number; rings: { pct: number; color: string }[]; children?: ReactNode }) {
+export function ConcentricRings({
+  size,
+  rings,
+  children,
+  width = 6,
+  gap = 9,
+  outer,
+}: {
+  size: number;
+  rings: { pct: number; color: string }[];
+  children?: ReactNode;
+  width?: number;
+  gap?: number;
+  outer?: number;
+}) {
   const c = size / 2;
-  const w = 6;
+  const w = width;
+  const R0 = outer ?? c - 3;
   return (
     <span className="rg" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`}>
         {rings.map((r, i) => {
-          const R = c - 3 - i * 9;
+          const R = R0 - i * gap;
           return (
             <g key={i}>
               <circle cx={c} cy={c} r={R} fill="none" stroke="#ECECE7" strokeWidth={w} />

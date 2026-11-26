@@ -731,7 +731,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   const onboardingNow = S.phase === "new" || S.phase === "onboarding";
   const due = isDue(S);
   const nowD = new Date(Date.now() + S.timeOffsetMs);
-  const showNav = !onboardingNow && !(tab === "coach" && reh);
+  const showNav = !onboardingNow && tab !== "coach";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -769,12 +769,15 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                     </>
                   ) : (
                     <div className="hd">
+                      <motion.button whileTap={{ scale: 0.9 }} className="rb" aria-label="Zurück zur Lernreise" onClick={() => openReise("home")}>
+                        <Icon name="back" />
+                      </motion.button>
                       <span className="av logo" style={{ background: "var(--acc)" }} {...logoProps} title="Lange drücken: Demo-Steuerung">
                         <Icon name="logo" />
                       </span>
                       <div className="t">
                         Kompass
-                        <small>Dein Coach · kennt deine Lernreise</small>
+                        <small>Dein Coach</small>
                       </div>
                     </div>
                   )}
@@ -917,7 +920,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                   <Icon name={icon} />
                   {label}
                   <AnimatePresence>
-                    {id === "coach" && unread && tab !== "coach" && <motion.i className="udot" initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} exit={{ scale: 0 }} />}
+                    {id === "coach" && unread && <motion.i className="udot" initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} exit={{ scale: 0 }} />}
                   </AnimatePresence>
                 </button>
               ))}

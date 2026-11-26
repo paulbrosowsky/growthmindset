@@ -97,7 +97,7 @@ export function Home({
             <b>
               {when} präsentierst du die {shortTopic(pres.topic)}.
             </b>
-            <div className="mut" style={{ margin: "2px 0 8px" }}>
+            <div className="mut" style={{ margin: "2px 0 6px" }}>
               {pres.practiced ? "Generalprobe erledigt. Du bist vorbereitet." : "Heute noch eine Generalprobe?"}
             </div>
             {!pres.practiced && <Button onClick={onPractice}>Jetzt üben</Button>}
@@ -108,48 +108,34 @@ export function Home({
       <MCard variants={ITEM}>
         <div className="row between" style={{ marginBottom: 6 }}>
           <h3 style={{ fontSize: 14 }}>Deine Lernreise</h3>
-          <span className="mut xs">Fortschritt in %</span>
+          <span className="xp">{state.xp.toLocaleString("de-DE")} XP</span>
         </div>
-        <div className="row" style={{ gap: 12 }}>
-          <ConcentricRings size={92} rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}>
-            <b className="lvl-in">
+        <div style={{ display: "grid", justifyItems: "center", margin: "24px 0 30px" }}>
+          <ConcentricRings
+            size={188}
+            width={8}
+            gap={15}
+            outer={88}
+            rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}
+          >
+            <b className="lvl-big">
               Level
               <br />
               <span>{lvl}</span>
             </b>
           </ConcentricRings>
-          <div className="legend">
-            {state.areas.map((a) => (
-              <button key={a.id} className="lg" onClick={() => onOpenArea(a.id)}>
-                <i style={{ background: a.color }} />
-                <span className="ell">{a.name}</span>
-                <b>{areaProgress(a)}</b>
-              </button>
-            ))}
-          </div>
+        </div>
+        <div className="legend-rows">
+          {state.areas.map((a) => (
+            <motion.button key={a.id} whileTap={{ scale: 0.98 }} className="lrow" onClick={() => onOpenArea(a.id)}>
+              <i style={{ background: a.color }} />
+              <span className="ell">{a.name}</span>
+              <b>{areaProgress(a)} %</b>
+              <Icon name="chev" className="mut" size={14} />
+            </motion.button>
+          ))}
         </div>
       </MCard>
-
-      <MCard variants={ITEM} style={{ padding: "12px 14px" }}>
-        <div className="row between">
-          <b>{state.xp.toLocaleString("de-DE")} XP</b>
-          <span className="mut xs">
-            noch {XP_PER_LEVEL - inLevel} bis Level {lvl + 1}
-          </span>
-        </div>
-        <Progress className="mt-2" value={(inLevel / XP_PER_LEVEL) * 100} />
-      </MCard>
-
-      <motion.button variants={ITEM} whileTap={{ scale: 0.98 }} className="card sug" onClick={onNext}>
-        <Ring size={40} width={4} pct={praesPct} color="var(--p1)">
-          <b style={{ fontSize: 10 }}>{praesPct}</b>
-        </Ring>
-        <div className="tx">
-          <span className="tag">Nächster Schritt</span>
-          <b className="ell">{state.phase === "done" ? "Rückfragen souverän meistern" : `Präsentieren auf ${Math.min(100, praesPct + 15)} %`}</b>
-        </div>
-        <Icon name="send" className="mut" />
-      </motion.button>
     </motion.div>
   );
 }

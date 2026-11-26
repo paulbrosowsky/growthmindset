@@ -526,7 +526,7 @@
     background: var(--s);
     box-shadow: 0 6px 16px -8px rgba(40, 40, 30, 0.16);
     border-radius: 20px;
-    padding: 12px;
+    padding: 10px 12px;
     display: flex;
     gap: 10px;
     align-items: flex-start;
@@ -883,8 +883,8 @@
   .app:has(.nav) .toasts {
     bottom: 82px;
   }
-  .app:has(.nav):has(.inp) .toasts {
-    bottom: 142px;
+  .app:has(.inp) .toasts {
+    bottom: 76px;
   }
   .toasts {
     position: absolute;
@@ -1021,5 +1021,46 @@
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@layer components {
+  .rg > b.lvl-big {
+    text-align: center;
+    line-height: 1.05;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .lvl-big span {
+    font-size: 34px;
+    font-weight: 800;
+  }
+  .legend-rows {
+    display: grid;
+    gap: 0;
+  }
+  .lrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    min-height: 25px;
+    padding: 0 6px;
+    width: 100%;
+    text-align: left;
+    border-radius: 10px;
+  }
+  .lrow:hover {
+    background: var(--g);
+  }
+  .lrow > i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .lrow > span {
+    flex: 1;
+    font-weight: 600;
   }
 }
