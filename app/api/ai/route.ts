@@ -23,10 +23,23 @@ const levelChanges = {
 function context(s: AppState): string {
   const p = s.profile;
   const lines: string[] = [];
-  if (p)
-    lines.push(
-      `Profil: ${p.name}; Rolle: ${p.role}; im Unternehmen: ${p.tenure}; Erfahrung: ${p.experience}; Interessen: ${p.interests}; Challenge: ${p.challenge}; Lernpräferenz: ${p.preference}; Ziel: ${p.goal}.`,
-    );
+  if (p) {
+    const fields: [string, string | undefined][] = [
+      ["Name", p.name],
+      ["Rolle", p.role],
+      ["Bisherige Stationen", p.experience],
+      ["Macht Spaß / meidet", p.likes],
+      ["Möchte lernen", p.learn],
+      ["In 3 Jahren", p.vision],
+      ["Lernziel nächste 4 Wochen (gemeinsam vereinbart)", p.goal],
+      ["Lernt am besten", p.preference],
+      ["Zeitrahmen fürs Lernen", p.time],
+      ["Im Unternehmen", p.tenure],
+      ["Interessen", p.interests],
+      ["Challenge", p.challenge],
+    ];
+    lines.push("Profil:\n" + fields.filter(([, v]) => v).map(([k, v]) => `- ${k}: ${v}`).join("\n"));
+  }
   lines.push(
     "Lernpfad (Skill: Fortschritt; Teilkompetenzen mit Stufe 0-5):\n" +
       s.areas
@@ -70,11 +83,36 @@ export async function POST(req: NextRequest) {
     switch (task) {
       case "welcome": {
         const out = await ask<ReturnType<typeof fallback.welcome>>(
-          `${ctx}\n\nDas Onboarding ist abgeschlossen, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 1 kurzer Satz an ${name} (max. 15 Wörter), der Fokus des Lernpfads.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt aus dem Arbeitsalltag, Stichwort, max. 6 Wörter.`,
+          `${ctx}\n\nDas Onboarding ist abgeschlossen und das Lernziel gemeinsam vereinbart, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 1 kurzer Satz an ${name} (max. 15 Wörter), der Fokus des Lernpfads.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt aus dem Arbeitsalltag, der zum vereinbarten 4-Wochen-Lernziel, zur Lernweise und zum Zeitrahmen passt, Stichwort, max. 6 Wörter.`,
           obj({ summary: str, focus: strArr, firstStep: str }),
         );
         if (out && !out.focus.includes("praes")) out.focus = ["praes", ...out.focus].slice(0, 3);
         return out ?? fallback.welcome(state.profile);
+      }
+      case "onboard": {
+        // Kennenlernen: kurze Reaktion auf die Antwort, optional eine individuelle Nachfrage.
+        const history: { from: string; text: string }[] = payload.history || [];
+        const left: number = payload.followUpsLeft ?? 0;
+        const isFollowUpAnswer = Boolean(payload.isFollowUpAnswer);
+        const out = await ask<{ reaction: string; followUp: string }>(
+          `Du lernst ${payload.name || "die Person"} gerade im Onboarding kennen, um gemeinsam ein Lernziel zu finden. Du stellst 8 Kernfragen nach Wer, Was und Wie.\nBisheriges Gespräch:\n${history.map((h) => `${h.from === "me" ? payload.name || "Person" : "Kompass"}: ${h.text}`).join("\n")}\n\nAktuelle Kernfrage: „${payload.question}“\nAntwort: „${payload.answer}“\n${payload.nextQuestion ? `Danach folgt die Kernfrage: „${payload.nextQuestion}“ (stellt die App selbst).` : "Das war die letzte Kernfrage, danach fasst du das Profil zusammen."}\n\nfollowUp: ${isFollowUpAnswer || left <= 0 ? "leer lassen, keine Nachfrage mehr." : `Nur wenn die Antwort vage ist oder etwas Wichtiges fürs Lernziel andeutet (z. B. etwas, das die Person meidet), eine individuelle, offene Nachfrage, die ins Detail geht, max. 14 Wörter. Sonst leer. Noch ${left} Nachfragen im ganzen Onboarding erlaubt, nutze sie für das Wichtigste.`}\nreaction: 1 kurzer, persönlicher Satz, der konkret aufgreift, was gesagt wurde, max. 12 Wörter, keine Frage, kein Lob für Talent. Wiederhole nicht die nächste Kernfrage.`,
+          obj({ reaction: str, followUp: str }),
+          { maxTokens: 800 },
+        );
+        if (out) {
+          if (isFollowUpAnswer || left <= 0) out.followUp = "";
+          return out;
+        }
+        return fallback.onboard(payload.step, payload.answer || "", left, isFollowUpAnswer);
+      }
+      case "profile": {
+        const a = payload.answers || {};
+        const out = await ask<ReturnType<typeof fallback.profile>>(
+          `Fasse das Onboarding-Gespräch mit ${a.name} als Profil-Karte zusammen. Antworten:\n- Rolle: ${a.role}\n- Bisherige Stationen: ${a.experience}\n- Macht Spaß / meidet: ${a.likes}\n- Möchte lernen: ${a.learn}\n- In 3 Jahren: ${a.vision}\n- In 4 Wochen erreichen: ${a.goal}\n- Lernt am besten: ${a.preference}\n- Zeitrahmen: ${a.time}\n${payload.correction ? `\nDie letzte Zusammenfassung passte noch nicht. Korrektur von ${a.name}: „${payload.correction}“. Übernimm sie.\n` : ""}\nwer, was, wie: je 2 bis 3 Stichworte (max. 5 Wörter), in Du-Form gedacht, ohne Namen. wer = Rolle, Erfahrung, was Spaß macht und was gemieden wird. was = Lernthema und Perspektive in 3 Jahren. wie = Lernweise und Zeitrahmen.\ngoal: das gemeinsame Lernziel für die nächsten 4 Wochen, konkret und überprüfbar, max. 12 Wörter, beginnt mit „In 4 Wochen“.\nintro: 1 kurzer Satz an ${a.name}, der zur Karte überleitet, max. 10 Wörter.`,
+          obj({ intro: str, wer: strArr, was: strArr, wie: strArr, goal: str }),
+          { maxTokens: 1500 },
+        );
+        return out && out.wer.length ? out : fallback.profile(a, payload.correction || "");
       }
       case "prep": {
         const out = await ask<ReturnType<typeof fallback.prep>>(

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/shadcn/button";
-import type { Slide } from "@/lib/types";
+import type { ProfileCard, Slide } from "@/lib/types";
 import { Icon, ITEM, MCard, Ring, STAGGER } from "./ui";
 
 export function RichText({ text }: { text: string }) {
@@ -164,6 +164,33 @@ export function SummaryCard({ focus }: { focus: { name: string; pct: number; col
           </div>
         ))}
       </div>
+    </MCard>
+  );
+}
+
+/** Ende des Kennenlernens: Profil in Stichworten (Wer, Was, Wie) und das gemeinsame 4-Wochen-Ziel. */
+export function ProfileSummaryCard({ card }: { card: ProfileCard }) {
+  const rows: [string, string[]][] = [
+    ["Wer", card.wer],
+    ["Was", card.was],
+    ["Wie", card.wie],
+  ];
+  return (
+    <MCard style={{ padding: 14 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div className="stack" style={{ gap: 10 }} variants={STAGGER} initial="hidden" animate="show">
+        {rows.map(([label, items]) =>
+          items?.length ? (
+            <motion.div key={label} variants={ITEM}>
+              <span className="tag">{label}</span>
+              <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3 }}>{items.join(" · ")}</div>
+            </motion.div>
+          ) : null,
+        )}
+        <motion.div variants={ITEM} style={{ borderTop: "1px solid var(--ln)", paddingTop: 10 }}>
+          <span className="tag acc">Dein Lernziel</span>
+          <b style={{ display: "block", fontSize: 13.5, marginTop: 3 }}>{card.goal}</b>
+        </motion.div>
+      </motion.div>
     </MCard>
   );
 }
