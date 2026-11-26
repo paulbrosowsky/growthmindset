@@ -11,7 +11,7 @@ import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
 import { fallback, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
-import { BADGES, COMPANY, findSkill, levelOf, skillProgress, TEAM } from "@/lib/knowledge";
+import { BADGES, COMPANY, findSkill, initialState, levelOf, skillProgress, TEAM } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
@@ -39,6 +39,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   const [tab, setTabState] = useState<Tab>("coach");
   const tabRef = useRef<Tab>("coach");
   const [reise, setReise] = useState<Reise>({ view: "home", area: "komm", skill: "praes" });
+  const blockSave = useRef(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [reh, setReh] = useState<RehearsalState | null>(null);
   const [obStep, setObStep] = useState(0);
@@ -77,6 +78,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   const save = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      if (blockSave.current) return;
       const s = sRef.current;
       fetch(`/api/state?u=${encodeURIComponent(s.username)}`, {
         method: "PUT",
@@ -656,11 +658,20 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
 
   /** Konversation neu starten: Profil zurücksetzen, Username bleibt. */
   async function restart() {
-    await fetch(`/api/state?u=${encodeURIComponent(S.username)}`, { method: "DELETE" }).catch(() => {});
+    blockSave.current = true;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    const u = encodeURIComponent(S.username);
+    try {
+      await fetch(`/api/state?u=${u}`, { method: "DELETE" });
+      // Sicherheitsnetz: leeren Startzustand schreiben, falls das Löschen nicht greift.
+      await fetch(`/api/state?u=${u}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(initialState(S.username)) });
+    } catch {}
     window.location.reload();
   }
 
   async function resetAll() {
+    blockSave.current = true;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     await fetch(`/api/state?u=${encodeURIComponent(S.username)}`, { method: "DELETE" }).catch(() => {});
     try {
       localStorage.removeItem("kompass-user");
