@@ -41,7 +41,7 @@ const PRESENT_CHIP = "Hey, ich muss morgen die Q4-Roadmap präsentieren.";
 const CHIPS = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const CHIP = { hidden: { opacity: 0, y: 8, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 420, damping: 28 } } };
 
-export default function Coach({ initial, live, onLogout }: { initial: AppState; live: boolean; onLogout: () => void }) {
+export default function Coach({ initial, live, onLogout, onRestart }: { initial: AppState; live: boolean; onLogout: () => void; onRestart: (fresh: AppState) => void }) {
   const [S, setS] = useState<AppState>(initial);
   const sRef = useRef<AppState>(initial);
   const [typing, setTyping] = useState(false);
@@ -713,13 +713,15 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   async function restart() {
     blockSave.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    const fresh = initialState(S.username);
     const u = encodeURIComponent(S.username);
     try {
-      await fetch(`/api/state?u=${u}`, { method: "DELETE" });
-      // Sicherheitsnetz: leeren Startzustand schreiben, falls das Löschen nicht greift.
-      await fetch(`/api/state?u=${u}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(initialState(S.username)) });
+      await fetch(`/api/state?u=${u}`, { method: "DELETE", cache: "no-store" });
+      await fetch(`/api/state?u=${u}`, { method: "PUT", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify(fresh) });
     } catch {}
-    window.location.reload();
+    // Nicht neu laden: ein Server-Stand von einer anderen Instanz oder ein verspätetes Speichern
+    // könnte den alten Verlauf zurückbringen. Die Seite startet direkt mit dem leeren Zustand.
+    onRestart(fresh);
   }
 
   async function resetAll() {

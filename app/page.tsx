@@ -10,6 +10,7 @@ import { initialAreas, initialState } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
 const KEY = "kompass-user";
+const RESET_KEY = (u: string) => `kompass-reset-${u}`;
 
 export default function Home() {
   const [state, setState] = useState<AppState | null>(null);
@@ -17,6 +18,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [gen, setGen] = useState(0);
 
   async function enter(raw: string) {
     const u = raw.trim().toLowerCase();
@@ -29,14 +31,20 @@ export default function Home() {
     setError("");
     try {
       const [st, info] = await Promise.all([
-        fetch(`/api/state?u=${encodeURIComponent(u)}`).then((r) => r.json()),
+        fetch(`/api/state?u=${encodeURIComponent(u)}`, { cache: "no-store" }).then((r) => r.json()),
         fetch("/api/ai").then((r) => r.json()).catch(() => ({ live: false })),
       ]);
       setLive(Boolean(info.live));
       try {
         localStorage.setItem(KEY, u);
       } catch {}
-      const loaded = st.state as AppState | null;
+      let loaded = st.state as AppState | null;
+      // Nach einem Neustart: älteren Server-Stand ignorieren (z. B. verspätetes Speichern oder andere Server-Instanz).
+      let resetAt = "";
+      try {
+        resetAt = localStorage.getItem(RESET_KEY(u)) || "";
+      } catch {}
+      if (loaded && resetAt && (loaded.createdAt || "") < resetAt) loaded = null;
       if (loaded) {
         // Ältere Profile: fehlende Vorschläge aus den Standard-Inhalten ergänzen.
         const base = initialAreas();
@@ -62,9 +70,16 @@ export default function Home() {
   if (state) {
     return (
       <Coach
-        key={state.username}
+        key={`${state.username}-${gen}`}
         initial={state}
         live={live}
+        onRestart={(fresh) => {
+          try {
+            localStorage.setItem(RESET_KEY(fresh.username), fresh.createdAt);
+          } catch {}
+          setState(fresh);
+          setGen((g) => g + 1);
+        }}
         onLogout={() => {
           try {
             localStorage.removeItem(KEY);
