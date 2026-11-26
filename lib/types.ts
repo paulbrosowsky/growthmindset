@@ -63,7 +63,9 @@ export type MsgKind =
   | "recs"
   | "summary"
   | "video"
-  | "note";
+  | "note"
+  | "update"
+  | "analyzing";
 
 export type Msg = {
   id: string;

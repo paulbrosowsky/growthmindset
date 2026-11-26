@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { extractFrames } from "@/lib/clientUtil";
+import { Icon } from "./ui";
+import { Button } from "@/components/shadcn/button";
 
 export type VideoResult = {
   frames: string[];
@@ -143,55 +145,60 @@ export default function VideoRecorder({ onDone, disabled }: { onDone: (r: VideoR
     }
   }
 
-  if (disabled) return <p className="muted small">Aufnahme abgeschlossen.</p>;
+  if (disabled) return <p className="mut xs">Aufnahme abgeschlossen.</p>;
 
   return (
-    <div className="recorder">
-      {(mode === "live" || mode === "recording") && (
-        <div className="cam">
+    <div className="stack">
+      <div className="vid">
+        {mode === "live" || mode === "recording" ? (
           <video ref={videoRef} muted playsInline />
-          {mode === "recording" && (
-            <span className="rec-badge">
-              <i /> {secs}s
-            </span>
-          )}
-        </div>
-      )}
-      {mode === "recording" && live && <p className="transcript">„{live}“</p>}
-      <div className="row wrap">
+        ) : (
+          <svg viewBox="0 0 268 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden>
+            <circle cx="134" cy="84" r="30" fill="#c99a7c" />
+            <path d="M102 78c0-22 14-32 32-32s32 10 32 32c-8-10-18-12-32-12s-24 2-32 12z" fill="#3a2a22" />
+            <path d="M62 200c4-50 32-72 72-72s68 22 72 72z" fill="#e8e3dc" />
+          </svg>
+        )}
+        {mode === "recording" && (
+          <span className="rec-badge">
+            <i /> {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
+          </span>
+        )}
+        {mode === "recording" && live && <span className="live-tx">… {live.slice(-110)}</span>}
+        {mode === "idle" && <span className="live-tx">Sprich zu einer Person hinter der Kamera. 2 bis 3 Minuten reichen.</span>}
+        {mode === "processing" && <span className="live-tx">Standbilder werden ausgewählt …</span>}
+      </div>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         {mode === "idle" && (
           <>
-            <button className="btn primary" onClick={openCamera}>
-              Kamera starten
-            </button>
-            <label className="btn">
-              Video hochladen
-              <input type="file" accept="video/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
-            </label>
-            <button className="btn ghost" onClick={() => onDone({ frames: [], transcript: "", duration: 0, demo: true })}>
-              Ohne Kamera: Beispiel-Analyse
-            </button>
+            <Button className="flex-1" onClick={openCamera}>
+              <Icon name="cam" size={15} /> Kamera starten
+            </Button>
+            <Button asChild variant="secondary" className="flex-1">
+              <label>
+                <Icon name="upload" size={15} /> Clip hochladen
+                <input type="file" accept="video/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+              </label>
+            </Button>
           </>
         )}
         {mode === "live" && (
-          <button className="btn primary" onClick={start}>
+          <Button className="flex-1" onClick={start}>
             Aufnahme starten
-          </button>
+          </Button>
         )}
         {mode === "recording" && (
-          <button className="btn danger" onClick={stop}>
+          <Button variant="destructive" className="flex-1" onClick={stop}>
             Aufnahme beenden
-          </button>
+          </Button>
         )}
-        {mode === "processing" && <p className="muted small">Ich schaue mir dein Video an …</p>}
       </div>
-      {error && <p className="error small">{error}</p>}
       {mode === "idle" && (
-        <p className="muted small">
-          Ich werte Standbilder (Haltung, Blickkontakt, Gestik) und das live mitgeschriebene Transkript aus. Das Video verlässt deinen Browser nicht, nur
-          einzelne Standbilder und der Text.
-        </p>
+        <Button variant="link" size="sm" className="self-center text-muted-foreground underline" onClick={() => onDone({ frames: [], transcript: "", duration: 0, demo: true })}>
+          Ohne Kamera: Beispiel-Analyse zeigen
+        </Button>
       )}
+      {error && <p className="error xs">{error}</p>}
     </div>
   );
 }

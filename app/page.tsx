@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Input } from "@/components/shadcn/input";
+import { Button } from "@/components/shadcn/button";
+import { Icon } from "@/components/ui";
+import { Card } from "@/components/shadcn/card";
 import Coach from "@/components/Coach";
 import { initialState } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
@@ -67,27 +71,46 @@ export default function Home() {
 
   return (
     <main className="gate">
-      <div className="gate-card">
-        <svg className="gate-logo" viewBox="0 0 32 32" aria-hidden>
-          <circle cx="16" cy="16" r="14" />
-          <path d="M16 6 L20 16 L16 26 L12 16 Z" />
-        </svg>
-        <h1>Kompass</h1>
-        <p className="lead">Dein persönlicher Lern-Coach. Lernen da, wo es passiert: im Arbeitsalltag.</p>
+      <div className="gate-in">
+        <div className="gate-brand">
+          <span className="gate-logo">
+            <Icon name="logo" size={46} />
+          </span>
+          <b>Kompass</b>
+          <span className="mut">
+            Dein persönlicher Lern-Coach
+            <br />
+            bei Neckartal Systemtechnik
+          </span>
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void enter(name);
           }}
         >
-          <label htmlFor="u">Wähle einen Usernamen</label>
-          <input id="u" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. lena.berger" autoComplete="username" autoCapitalize="none" />
-          <button className="btn primary big" disabled={loading || !name.trim()}>
+          <Card>
+            <label htmlFor="u" className="mut xs">
+              Wähle einen Usernamen
+            </label>
+            <div className="gate-field">
+              <Input id="u" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. lena.berger" autoComplete="username" autoCapitalize="none" className="h-12 flex-1 bg-transparent px-0 text-base font-bold shadow-none focus-visible:ring-0" />
+              {name.trim().length >= 2 && (
+                <span className="ck a sm">
+                  <Icon name="check" size={13} />
+                </span>
+              )}
+            </div>
+            <div className="mut xs" style={{ marginTop: 6 }}>
+              Kein Passwort nötig. Mit demselben Namen kommst du zurück.
+            </div>
+          </Card>
+          <Button size="lg" disabled={loading || !name.trim()}>
             {loading ? "Einen Moment …" : "Los geht's"}
-          </button>
-          {error && <p className="error small">{error}</p>}
+          </Button>
+          {error && <p className="error xs">{error}</p>}
         </form>
-        <p className="muted small">Kein Passwort nötig. Mit demselben Usernamen kommst du später zurück.</p>
+        <p className="mut xs center">Dein Name wird nur auf diesem Gerät gemerkt.</p>
       </div>
     </main>
   );

@@ -38,10 +38,10 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 3. „Hey, ich muss morgen präsentieren“ → Thema → drei Vorschläge → Option 3 → „Slides vorbereiten“.
 4. Generalprobe aufnehmen (Kamera, Upload oder Beispiel-Analyse) → Feedback, Fortschritt steigt.
 5. Termin nennen, z. B. „Morgen um 10:00“.
-6. Menü **Demo → Zeitsprung nach der Präsentation**: Kompass fragt von sich aus nach.
+6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von Kompass.
 7. Reflexion, Kollegen-Feedback anfragen (simuliert), Lernpfad wird erweitert, Level-Up.
 
-**Demo → Profil zurücksetzen** startet von vorn.
+In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für die Jury und **Profil zurücksetzen**.
 
 ## Aufbau
 
@@ -49,6 +49,8 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 - `lib/claude.ts`: Claude-Aufrufe mit Structured Outputs, Prompt Caching und serverseitigem Fallback
 - `app/api/ai/route.ts`: die KI-Aufgaben (Begrüßung, Vorschläge, Slides, Videoanalyse, Reflexion, Kollegen-Feedback, Lernpfad-Update, freier Chat)
 - `lib/fallbacks.ts`: Skript-Antworten, wenn die KI nicht verfügbar ist
-- `components/Coach.tsx`: Chat und Demo-Ablauf, `components/Panel.tsx`: Lernreise, Erfahrungen, Team, Unternehmen
+- `components/Coach.tsx`: Handy-App mit Navigation (Coach, Reise, Team, Erfolge) und Demo-Ablauf
+- `components/views.tsx`: Reise mit Kompetenzbereichen, Team, Erfolge, Demo-Steuerung; `components/Cards.tsx`: Karten im Chat
+- UI: Tailwind CSS 4 mit [shadcn/ui](https://ui.shadcn.com) (`components/shadcn/`), Theme „Graphit & Gelb“ in `app/globals.css`; Animationen mit [Motion](https://motion.dev)
 
 Videoanalyse: Claude verarbeitet Bilder und Text, aber kein Video oder Audio direkt. Der Browser zieht deshalb 5 Standbilder aus der Aufnahme und schreibt die Sprache per Spracherkennung mit (Chrome, Edge, Safari). Nur Standbilder und Text gehen an den Server.

@@ -68,7 +68,13 @@ export const BADGES: Record<string, { name: string; text: string }> = {
   generalprobe: { name: "Generalprobe", text: "Erste Übung mit Videoanalyse" },
   feedback: { name: "Feedback-Sammler", text: "Erstes Feedback von Kollegen" },
   loop: { name: "Loop geschlossen", text: "Erfahrung bis zu neuen Vorschlägen geführt" },
+  mutig: { name: "Mutig", text: "Eine Aufgabe außerhalb der Komfortzone angepackt" },
 };
+
+/** Target level (Soll) of a skill for the person's role; demo heuristic. */
+export function targetLevel(skillId: string, focus: string[]): number {
+  return skillId === "praes" || focus.includes(skillId) ? 4 : 3;
+}
 
 const r = (id: string, type: Rec["type"], title: string, meta: string): Rec => ({ id, type, title, meta });
 
@@ -84,7 +90,7 @@ export function initialAreas(): Area[] {
     {
       id: "komm",
       name: "Kommunikation",
-      color: "#ff6a4d",
+      color: "#E9B949",
       skills: [
         s(
           "praes",
@@ -128,7 +134,7 @@ export function initialAreas(): Area[] {
     {
       id: "fach",
       name: "Fachwissen",
-      color: "#14a38b",
+      color: "#7FB5A3",
       skills: [
         s(
           "wp",
@@ -155,7 +161,7 @@ export function initialAreas(): Area[] {
     {
       id: "meth",
       name: "Methoden",
-      color: "#4f6bed",
+      color: "#7C9CD6",
       skills: [
         s("agil", "Agiles Arbeiten", [
           ["scrum", "Scrum", 4],
@@ -182,7 +188,7 @@ export function initialAreas(): Area[] {
     {
       id: "selbst",
       name: "Selbstführung",
-      color: "#c58b12",
+      color: "#E3907D",
       skills: [
         s("zeit", "Zeitmanagement", [
           ["prio", "Prioritäten setzen", 3],
@@ -277,14 +283,14 @@ export function knowledgeText(): string {
   const model = initialAreas()
     .map(
       (a) =>
-        `- Planet ${a.name}: ` +
+        `- Kompetenzbereich ${a.name}: ` +
         a.skills.map((sk) => `${sk.name} [${sk.id}] (Teilkompetenzen: ${sk.subs.map((x) => `${x.name} [${x.id}]`).join(", ")})`).join("; "),
     )
     .join("\n");
   return [
     `# Unternehmen\n${COMPANY.name}: ${COMPANY.about}\nVision: ${COMPANY.vision}\nZiele: ${COMPANY.goals.join("; ")}\nWerte: ${COMPANY.values.join(", ")}`,
     `# Rollen mit Soll-Profil\n${COMPANY.roles.map((ro) => `- ${ro.name}: ${ro.core.join(", ")}`).join("\n")}`,
-    `# Kompetenzmodell (Planeten > Skills [ID] > Teilkompetenzen [ID], Stufen 0 bis 5)\n${model}`,
+    `# Kompetenzmodell (Kompetenzbereiche > Skills [ID] > Teilkompetenzen [ID], Stufen 0 bis 5)\n${model}`,
     `# Fortbildungskatalog (nur diese internen Angebote nennen)\n${CATALOG.map((c) => `- ${c.title} (${c.type}, ${c.duration})`).join("\n")}`,
     `# Lernmethoden und Motivation\n${METHODS.map((m) => `- ${m}`).join("\n")}`,
     `# Team der Nutzerin bzw. des Nutzers (jede Person hat einen eigenen Kompass-Assistenten)\n${TEAM.map((t) => `- ${t.name}, ${t.role}`).join("\n")}`,

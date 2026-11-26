@@ -1,30 +1,48 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Panel from "./Panel";
+import { AnimatePresence, motion, MotionConfig } from "motion/react";
+import { Input } from "@/components/shadcn/input";
+import { Progress } from "@/components/shadcn/progress";
+import { Badge } from "@/components/shadcn/badge";
+import { Button } from "@/components/shadcn/button";
+import { Card } from "@/components/shadcn/card";
 import VideoRecorder, { type VideoResult } from "./VideoRecorder";
-import { FeedbackCard, LoopCard, OptionsCard, PeerCard, PeerSelectCard, RecsCard, RichText, SlidesCard, SummaryCard } from "./Cards";
+import { FeedbackCard, LoopCard, OptionsCard, PeerAskCard, PeerCard, RichText, SlidesCard, SummaryCard, UpdateCard } from "./Cards";
+import { AreaView, DemoSheet, ErfolgeView, Home, TeamView } from "./views";
+import { Icon } from "./ui";
 import { fallback, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
 import { BADGES, COMPANY, findSkill, levelOf, skillProgress } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string; kind: "xp" | "level" | "badge" | "info" };
+type Tab = "coach" | "reise" | "team" | "erfolge";
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
+const OB_TOTAL = 7;
+const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const CHIPS = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
+const CHIP = { hidden: { opacity: 0, y: 8, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 420, damping: 28 } } };
+const TOPIC_CHIP = "Q4-Roadmap der Wärmepumpen-App vor der Bereichsleitung, 15 Minuten";
 
 export default function Coach({ initial, live, onLogout }: { initial: AppState; live: boolean; onLogout: () => void }) {
   const [S, setS] = useState<AppState>(initial);
   const sRef = useRef<AppState>(initial);
   const [typing, setTyping] = useState(false);
   const [chips, setChips] = useState<string[]>([]);
-  const [placeholder, setPlaceholder] = useState("Schreib Kompass eine Nachricht …");
+  const [multi, setMulti] = useState<{ options: string[]; selected: string[] } | null>(null);
+  const [placeholder, setPlaceholder] = useState("Nachricht an Kompass");
   const [input, setInput] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [highlight, setHighlight] = useState<string | null>(null);
-  const [area, setArea] = useState("komm");
-  const [view, setView] = useState<"chat" | "path">("chat");
-  const [notif, setNotif] = useState(false);
+  const [tab, setTabState] = useState<Tab>("coach");
+  const tabRef = useRef<Tab>("coach");
+  const [reise, setReise] = useState<{ view: "home" | "area"; area: string; skill: string }>({ view: "home", area: "komm", skill: "praes" });
+  const [obStep, setObStep] = useState(0);
+  const [unread, setUnread] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const [script, setScriptState] = useState(false);
+  const scriptRef = useRef(false);
   const [, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
 
@@ -34,7 +52,21 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const started = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
-  const demoRef = useRef<HTMLDetailsElement>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setTab = (t: Tab) => {
+    tabRef.current = t;
+    setTabState(t);
+    if (t === "coach") setUnread(false);
+  };
+
+  const setScript = (v: boolean) => {
+    scriptRef.current = v;
+    setScriptState(v);
+    try {
+      localStorage.setItem("kompass-script", v ? "1" : "0");
+    } catch {}
+  };
 
   // ---------- state helpers ----------
   const save = useCallback(() => {
@@ -73,8 +105,15 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     update((s) => {
       s.messages.push({ ...m, id });
     });
+    if (m.from === "bot" && tabRef.current !== "coach") setUnread(true);
     return id;
   };
+
+  const patchMsg = (id: string, data: Record<string, unknown>) =>
+    update((s) => {
+      const m = s.messages.find((x) => x.id === id);
+      if (m) m.data = { ...(m.data || {}), ...data };
+    });
 
   const say = async (text: string, wait = 650) => {
     setTyping(true);
@@ -87,7 +126,16 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
 
   const ask = (c: string[], ph?: string) => {
     setChips(c);
-    setPlaceholder(ph || "Antwort schreiben oder oben antippen …");
+    setPlaceholder(ph || "Oder schreib frei …");
+    return new Promise<string>((res) => {
+      pending.current = res;
+    });
+  };
+
+  const askMulti = (options: string[], preset: string[] = []) => {
+    setChips([]);
+    setMulti({ options, selected: preset });
+    setPlaceholder("Oder schreib frei …");
     return new Promise<string>((res) => {
       pending.current = res;
     });
@@ -99,22 +147,19 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     });
 
   const resolveCard = (id: string, value: unknown) => {
-    update((s) => {
-      const m = s.messages.find((x) => x.id === id);
-      if (m) m.data = { ...(m.data || {}), done: true };
-    });
+    patchMsg(id, { done: true });
     const w = cardWaiters.current[id];
     delete cardWaiters.current[id];
     w?.(value);
   };
 
-  async function ai<T>(task: string, payload: unknown, fb: T): Promise<T> {
-    setTyping(true);
+  async function ai<T>(task: string, payload: unknown, fb: T, quiet = false): Promise<T> {
+    if (!quiet) setTyping(true);
     try {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ task, payload, state: { ...sRef.current, messages: [] } }),
+        body: JSON.stringify({ task, payload, script: scriptRef.current, state: { ...sRef.current, messages: [] } }),
       });
       if (!res.ok) return fb;
       const json = await res.json();
@@ -122,7 +167,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     } catch {
       return fb;
     } finally {
-      setTyping(false);
+      if (!quiet) setTyping(false);
     }
   }
 
@@ -182,12 +227,13 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   }
 
   function setIdleChips() {
-    const ph = sRef.current.phase;
-    if (ph === "ready") setChips(["Hey, ich muss morgen präsentieren", "Was soll ich diese Woche lernen?"]);
-    else if (ph === "waiting") setChips(["Zeitsprung: nach der Präsentation (Demo)"]);
-    else if (ph === "done") setChips(["Was soll ich als Nächstes üben?", "Ich muss wieder präsentieren"]);
+    const s = sRef.current;
+    const ph = s.phase;
+    if (ph === "ready") setChips(["Hey, ich muss morgen präsentieren", "Lernreise ansehen"]);
+    else if (ph === "waiting") setChips(s.presentation?.practiced ? ["Lernreise ansehen"] : ["Generalprobe aufnehmen", "Lernreise ansehen"]);
+    else if (ph === "done") setChips(["Was soll ich als Nächstes üben?", "Erfolge ansehen"]);
     else setChips([]);
-    setPlaceholder("Schreib Kompass eine Nachricht …");
+    setPlaceholder("Nachricht an Kompass");
   }
 
   async function onboarding() {
@@ -195,40 +241,47 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       s.phase = "onboarding";
       s.messages = [];
     });
+    setObStep(1);
     const guess = sRef.current.username.split(/[._-]/)[0];
     const nameChip = guess.charAt(0).toUpperCase() + guess.slice(1);
     await say(
-      `Hallo! Ich bin **Kompass**, dein persönlicher Lernbegleiter bei ${COMPANY.short}. Ich helfe dir, direkt im Arbeitsalltag zu lernen: mit dem, was bei dir gerade ansteht, in kleinen Schritten.`,
+      `Hallo! Ich bin **Kompass**, dein persönlicher Lern-Coach bei ${COMPANY.short}. Ich helfe dir, direkt im Arbeitsalltag zu lernen: mit dem, was bei dir gerade ansteht, in kleinen Schritten.`,
       400,
     );
     await say("Lass uns kurz kennenlernen, das dauert etwa zwei Minuten. Wie darf ich dich nennen?");
     const name = (await ask([nameChip], "Dein Vorname")).split(/[ ,]/)[0] || nameChip;
-    await say(`Schön, dich kennenzulernen, ${name}! In welcher Rolle und in welchem Bereich arbeitest du?`);
-    const role = await ask(["Produktmanagerin, Wärmepumpen-Software", "Entwickler im Steuerungsteam", "Teamleiterin im Kundenservice"], "Rolle und Bereich");
-    await say("Wie lange bist du schon bei uns?");
-    const tenure = await ask(["Seit 8 Monaten", "2 bis 5 Jahre", "Über 5 Jahre"]);
-    await say("Was beschäftigt dich gerade? Wo hakt es manchmal?");
-    const challenge = await ask(["Vor großen Runden zu präsentieren macht mich nervös", "Mir fehlt die Zeit zum Lernen", "Ich will fachlich tiefer einsteigen"]);
-    await say("Danke für deine Offenheit. Und wo möchtest du in zwei Jahren stehen?");
+
+    setObStep(2);
+    await say(`Schön, dich kennenzulernen, ${name}! In welcher Rolle arbeitest du bei uns?`);
+    const role = await ask(["Produktmanagerin, Wärmepumpen-App", "Entwickler im Steuerungsteam", "Teamleiterin im Kundenservice"], "Rolle und Bereich");
+
+    setObStep(3);
+    await say("Wie lange bist du schon dabei, und was hast du vorher gemacht?");
+    const tenureRaw = await ask(["Seit 8 Monaten, davor 3 Jahre Agentur", "Seit 4 Jahren", "Frisch nach dem Studium"]);
+    const [tenure, ...rest] = tenureRaw.split(/,\s*davor\s*/i);
+    const experience = rest.length ? `davor ${rest.join(", ")}` : tenureRaw;
+
+    setObStep(4);
+    await say("Was fordert dich gerade am meisten heraus?");
+    const challenge = await ask(["Vor großen Runden werde ich nervös", "Mir fehlt die Zeit zum Lernen", "Ich will fachlich tiefer einsteigen"]);
+
+    setObStep(5);
+    await say("Danke für deine Offenheit. Das lässt sich gut trainieren. Wie lernst du am liebsten? Du kannst mehreres wählen.");
+    const preference = await askMulti(["Videos", "Praxis", "Lesen", "Austausch", "Workshops"], []);
+
+    setObStep(6);
+    await say("Welche Themen interessieren dich besonders?");
+    const interests = await ask(["Datenanalyse, Nachhaltigkeit, UX", "Technik und Software", "Führung und Teamarbeit"]);
+
+    setObStep(7);
+    await say("Letzte Frage: Wo möchtest du in zwei Jahren stehen?");
     const goal = await ask(["Ein eigenes Produktteam leiten", "Fachexpertin bzw. Fachexperte werden", "Weiß ich noch nicht genau"]);
-    await say("Noch drei kurze Fragen zu Erfahrung, Interessen und wie du am liebsten lernst. Oder sollen wir direkt starten?");
-    const more = await ask(["Weiter", "Direkt starten"]);
-    let experience = "3 Jahre Projektmanagement in einer Agentur";
-    let interests = "Datenanalyse, Nachhaltigkeit, UX";
-    let preference = "Videos und Praxis";
-    if (!/direkt/i.test(more)) {
-      await say("Was hast du vorher gemacht?");
-      experience = await ask(["3 Jahre Projektmanagement in einer Agentur", "Studium, das ist mein erster Job"]);
-      await say("Welche Themen interessieren dich besonders?");
-      interests = await ask(["Datenanalyse, Nachhaltigkeit, UX", "Technik und Software", "Führung und Teamarbeit"]);
-      await say("Wie lernst du am liebsten?");
-      preference = await ask(["Videos und Praxis", "Lesen", "Workshops in der Gruppe", "Ein Mix aus allem"]);
-    }
-    const profile: Profile = { name, role, tenure, experience, interests, challenge, preference, goal };
+
+    const profile: Profile = { name, role, tenure: tenure.trim(), experience, interests, challenge, preference, goal };
     update((s) => {
       s.profile = profile;
     });
-    await say("Danke! Ich gleiche dein Profil jetzt mit dem Kompetenzmodell und den Soll-Profilen deiner Rolle ab …", 300);
+    await say("Danke! Ich gleiche dein Profil jetzt mit dem Kompetenzmodell und dem Soll-Profil deiner Rolle ab …", 300);
     const w = await ai("welcome", {}, fallback.welcome(profile));
     update((s) => {
       s.summary = w.summary;
@@ -237,105 +290,76 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       s.firstStep = w.firstStep;
       s.phase = "ready";
     });
+    setObStep(0);
+    const areas = sRef.current.areas;
     const focus = sRef.current.focus
-      .map((id) => findSkill(sRef.current.areas, id))
-      .filter(Boolean)
-      .map((sk) => ({ name: sk!.name, pct: skillProgress(sk!) }));
+      .map((id) => {
+        const area = areas.find((a) => a.skills.some((k) => k.id === id));
+        const sk = findSkill(areas, id);
+        return sk ? { name: sk.name, pct: skillProgress(sk), color: area?.color } : null;
+      })
+      .filter(Boolean) as { name: string; pct: number; color?: string }[];
     push({ from: "bot", kind: "summary", data: { name, focus } });
     await say(w.summary, 300);
     addXP(50, "Onboarding abgeschlossen", { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    setHighlight("praes");
     await say(
-      `Deinen Lernpfad findest du unter **Lernreise**: Jeder Planet ist ein Kompetenzbereich, die Monde sind deine Skills. Erster Schritt diese Woche: ${w.firstStep}\n\nSag mir einfach, wenn bei dir etwas ansteht, zum Beispiel eine Präsentation, ein schwieriges Gespräch oder ein neues Thema.`,
+      `Deinen Lernpfad findest du unter **Reise**: vier Kompetenzbereiche als Ringe, darin deine Skills. Erster Schritt diese Woche: ${w.firstStep}\n\nSag mir einfach, wenn bei dir etwas ansteht, zum Beispiel eine Präsentation, ein schwieriges Gespräch oder ein neues Thema.`,
     );
   }
 
-  async function presentFlow() {
-    const name = sRef.current.profile?.name || "";
-    const pct = praesPct();
-    setHighlight("praes");
-    setArea("komm");
-    await say(
-      `Super, ich sehe, du hast beim Präsentieren schon gute Fortschritte gemacht: **${pct} %** deines Meilensteins sind geschafft, Struktur und Folien sitzen. Möchtest du dich für deine Präsentation vorbereiten?`,
-    );
-    const yes = await ask(["Ja, gerne!", "Nein, heute nicht"]);
-    if (/nein|nicht/i.test(yes)) {
-      await say(`Alles klar, ${name}. Ich drück dir die Daumen! Wenn du magst, erzähl mir hinterher, wie es lief.`);
-      return;
-    }
-    await say("Worum geht es in deiner Präsentation, und wer hört zu?");
-    const topic = await ask(["Quartalsupdate zur neuen Wärmepumpen-App vor der Bereichsleitung, ca. 15 Minuten"], "Thema und Publikum");
-    update((s) => {
-      s.presentation = { topic };
-    });
-    const prep = await ai<PrepOut>("prep", { topic }, fallback.prep(topic, pct));
-    await say(prep.text, 200);
-    const optId = push({ from: "bot", kind: "options", data: { options: prep.options } });
-    const choice = await ask(prep.options.map((o, i) => `${i + 1} · ${o.title}`));
-    update((s) => {
-      const m = s.messages.find((x) => x.id === optId);
-      if (m) m.data = { ...m.data, done: true };
-    });
-    let idx = 2;
-    if (/^\s*1/.test(choice) || (/video/i.test(choice) && !/eigen|aufnehm|selbst/i.test(choice))) idx = 0;
-    else if (/^\s*2/.test(choice) || /les/i.test(choice)) idx = 1;
-
-    let practice = idx === 2;
-    if (!practice) {
-      const opt = prep.options[idx];
+  /** Slides (optional), Generalprobe per Video, Analyse, Fortschritt. */
+  async function practice(topic: string, withSlides: boolean) {
+    if (withSlides) {
+      const deck = await ai("slides", { topic }, fallback.slides(topic));
+      await say(`Hier ist ein Entwurf mit ${deck.slides.length} Folien, mit Sprechernotizen. Die Notizen trainieren genau die Punkte, an denen du noch arbeitest.`, 200);
+      push({ from: "bot", kind: "slides", data: { slides: deck.slides } });
       update((s) => {
-        const sk = findSkill(s.areas, "praes");
-        sk?.recs.unshift({ id: uid(), type: idx === 0 ? "Extern" : "Ressource", title: opt.title, meta: opt.detail, fresh: true });
+        if (s.presentation) s.presentation.slides = deck.slides;
       });
-      addXP(15, "Lerninhalt ausgewählt", { kind: "Lernen", title: opt.title });
-      await say(`Gute Wahl, ich habe dir „${opt.title}“ in den Lernpfad gelegt. Am meisten bringt es aber, einmal laut zu üben. Magst du zusätzlich eine kurze Generalprobe aufnehmen?`);
-      practice = !/nein|reicht/i.test(await ask(["Ja, Video aufnehmen", "Nein, das reicht mir"]));
+      addXP(20, "Folienentwurf erstellt");
+      await ask(["Übernehmen", "Passt, weiter zur Generalprobe"]);
     }
+    await say("Jetzt die Generalprobe: Nimm dich auf, wie du präsentierst. Zwei bis drei Minuten reichen, Einstieg und Schluss sind am wichtigsten.");
+    const vidId = push({ from: "bot", kind: "video" });
+    setChips([]);
+    const vid = await waitCard<VideoResult>(vidId);
+    if (vid.url) push({ from: "me", kind: "video", data: { url: vid.url, secs: Math.round(vid.duration) } });
+    else if (vid.demo) push({ from: "me", kind: "text", text: "Ich habe gerade keine Kamera, zeig mir eine Beispiel-Analyse." });
 
-    if (practice) {
-      await say("Sehr gut, laut üben mit Aufnahme ist die wirksamste Vorbereitung. Hast du schon Folien, oder soll ich dir ein paar Slides entwerfen?");
-      const sl = await ask(["Slides vorbereiten", "Ich habe schon Folien"]);
-      if (!/habe schon|schon folien/i.test(sl)) {
-        const deck = await ai("slides", { topic }, fallback.slides(topic));
-        push({ from: "bot", kind: "slides", data: { slides: deck.slides } });
-        update((s) => {
-          if (s.presentation) s.presentation.slides = deck.slides;
-        });
-        addXP(20, "Folienentwurf erstellt");
-        await say("Hier ist dein Entwurf mit Sprechernotizen. Die Notizen trainieren genau die Punkte, an denen du noch arbeitest.", 300);
+    const anId = push({ from: "bot", kind: "analyzing", data: { frames: vid.frames.length, transcript: !!vid.transcript, step: 0 } });
+    const steps = (async () => {
+      for (let i = 1; i <= 3; i++) {
+        await sleep(900);
+        patchMsg(anId, { step: i });
       }
-      await say("Jetzt kommt die Generalprobe: Nimm dich auf, wie du präsentierst. Zwei bis drei Minuten reichen, Einstieg und Schluss sind am wichtigsten.");
-      const vidId = push({ from: "bot", kind: "video" });
-      setChips([]);
-      const vid = await waitCard<VideoResult>(vidId);
-      if (vid.url) push({ from: "me", kind: "video", data: { url: vid.url, secs: Math.round(vid.duration) } });
-      else if (vid.demo) push({ from: "me", kind: "text", text: "Ich habe gerade keine Kamera, zeig mir eine Beispiel-Analyse." });
-      await say("Danke! Ich schaue mir deine Aufnahme an …", 300);
-      let analysis: VideoOut;
-      if (vid.demo || (!vid.frames.length && !vid.transcript)) {
-        setTyping(true);
-        await sleep(1800);
-        setTyping(false);
-        analysis = fallback.video();
-      } else {
-        analysis = await ai("video", { topic, frames: vid.frames, transcript: vid.transcript, duration: vid.duration }, fallback.video());
-      }
-      push({ from: "bot", kind: "feedback", data: { ...analysis, frames: vid.frames.length } });
-      const before = praesPct();
-      applyLevels(analysis.levelChanges, ["Übung"]);
-      const after = praesPct();
-      update((s) => {
-        if (s.presentation) s.presentation.practiced = true;
-        if (analysis.improve[0]) s.memory.unshift(`Generalprobe: ${analysis.improve[0]}`);
-      });
-      addXP(80, "Generalprobe mit Videoanalyse", { kind: "Üben", title: "Generalprobe per Video", detail: analysis.tip });
-      award("generalprobe");
-      note(`Präsentieren ${before} % → ${after} %`);
-      await say("Diese Übung habe ich in deinem Lernpfad vermerkt.", 300);
+    })();
+    let analysis: VideoOut;
+    if (vid.demo || (!vid.frames.length && !vid.transcript)) {
+      await sleep(1200);
+      analysis = fallback.video();
+    } else {
+      analysis = await ai("video", { topic, frames: vid.frames, transcript: vid.transcript, duration: vid.duration }, fallback.video(), true);
     }
+    await steps;
+    patchMsg(anId, { step: 4, done: true });
 
-    await say("Wann genau ist deine Präsentation?");
+    const before = praesPct();
+    applyLevels(analysis.levelChanges, ["Übung"]);
+    const after = praesPct();
+    await say("Danke! Das ist mir aufgefallen:", 200);
+    push({ from: "bot", kind: "feedback", data: { ...analysis, frames: vid.frames.length, before, after } });
+    update((s) => {
+      if (s.presentation) s.presentation.practiced = true;
+      if (analysis.improve[0]) s.memory.unshift(`Generalprobe: ${analysis.improve[0]}`);
+    });
+    addXP(80, "Generalprobe mit Videoanalyse", { kind: "Üben", title: "Generalprobe per Video", detail: analysis.tip });
+    award("generalprobe");
+    await say("Diese Übung habe ich in deiner Lernreise vermerkt.", 300);
+  }
+
+  async function askTime() {
+    await say("Wann genau ist deine Präsentation? Dann melde ich mich danach bei dir.");
     const when = await ask(["Morgen um 10:00", "Morgen um 14:30"], "z. B. morgen um 11 Uhr");
     const { at, label } = parseWhen(when, now());
     update((s) => {
@@ -346,39 +370,86 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       }
       s.phase = "waiting";
     });
-    await say(`Notiert: **${label}**. Ich melde mich danach bei dir und frage, wie es gelaufen ist. Viel Erfolg, du bist gut vorbereitet!`);
+    await say(`Notiert: **${label}**. Ich frage danach, wie es gelaufen ist. Viel Erfolg, du bist gut vorbereitet!`);
+  }
+
+  async function presentFlow() {
+    const pct = praesPct();
+    await say(
+      `Gut, dass du dich meldest! Beim Präsentieren bist du schon bei **${pct} %**, Struktur und Folien sitzen. Worum geht es, und wer hört zu?`,
+    );
+    const topic = await ask([TOPIC_CHIP], "Thema und Publikum");
+    update((s) => {
+      s.presentation = { topic };
+    });
+    const prep = await ai<PrepOut>("prep", { topic }, fallback.prep(topic, pct));
+    await say(prep.text, 200);
+    const optId = push({ from: "bot", kind: "options", data: { options: prep.options } });
+    const choice = await ask(["Slides vorbereiten", "Termin merken"]);
+    patchMsg(optId, { done: true });
+
+    if (/termin/i.test(choice)) return askTime();
+    if (/slides|folien/i.test(choice)) {
+      await practice(topic, true);
+      return askTime();
+    }
+    let idx = 2;
+    if (/^\s*1/.test(choice) || (/video|grundlage/i.test(choice) && !/eigen|aufnehm|selbst|generalprobe/i.test(choice))) idx = 0;
+    else if (/^\s*2/.test(choice) || /les|leitfaden|vorlage/i.test(choice)) idx = 1;
+
+    if (idx < 2) {
+      const opt = prep.options[idx];
+      update((s) => {
+        const sk = findSkill(s.areas, "praes");
+        sk?.recs.unshift({ id: uid(), type: idx === 0 ? "Intern" : "Ressource", title: opt.title, meta: opt.detail, fresh: true });
+      });
+      addXP(15, "Lerninhalt ausgewählt", { kind: "Lernen", title: opt.title });
+      await say(`Gute Wahl, „${opt.title}“ liegt jetzt in deiner Lernreise. Am meisten bringt es aber, einmal laut zu üben. Magst du zusätzlich eine kurze Generalprobe aufnehmen?`);
+      const more = await ask(["Ja, mit Slides", "Ja, ohne Slides", "Nein, das reicht"]);
+      if (!/nein|reicht/i.test(more)) await practice(topic, /mit slides/i.test(more));
+      return askTime();
+    }
+    await say("Sehr gut, laut üben mit Aufnahme ist die wirksamste Vorbereitung. Hast du schon Folien, oder soll ich dir welche entwerfen?");
+    const sl = await ask(["Slides vorbereiten", "Ich habe schon Folien"]);
+    await practice(topic, !/habe schon|schon folien/i.test(sl));
+    await askTime();
   }
 
   async function followUp() {
-    setNotif(false);
+    setUnread(false);
     const s0 = sRef.current;
     const name = s0.profile?.name || "";
-    const topic = s0.presentation?.topic || "deine Präsentation";
-    const short = topic.length > 70 ? topic.slice(0, 67) + "…" : topic;
+    const p = s0.presentation;
+    const topic = p?.topic || "deine Präsentation";
+    const short = topic.length > 60 ? topic.slice(0, 57) + "…" : topic;
+    if (p?.at) {
+      const d = new Date(p.at);
+      note(`${WD[d.getDay()]}, ${fmtClock(new Date(d.getTime() + 75 * 60e3))} · nach deinem Termin`);
+    }
     await say(`Hey ${name}! Heute war deine Präsentation „${short}“. **Wie ist sie gelaufen?**`, 300);
-    const how = await ask(["Ziemlich gut!", "Gemischt", "Eher schwierig"]);
+    const how = await ask(["Super", "Ganz gut", "Holprig"]);
     const r = await ai("react", { answer: how }, fallback.react(how));
     await say(r.text, 100);
-    const good = await ask(["Der Einstieg mit der Kundenstory kam super an"], "Was hat gut geklappt?");
+    const good = await ask(["Der Einstieg mit der Kundenstory saß"], "Was hat gut geklappt?");
     await say("Und was würdest du beim nächsten Mal anders machen?");
-    const bad = await ask(["Bei den Rückfragen der Bereichsleitung war ich unsicher"], "Was würdest du anders machen?");
+    const bad = await ask(["Bei der Rückfrage zum Budget war ich hektisch"], "Was würdest du anders machen?");
     const ref = await ai("reflect", { how, good, bad }, fallback.reflect());
     await say(ref.text, 100);
-    addXP(60, "Präsentation gehalten und reflektiert", { kind: "Anwenden", title: `Präsentation gehalten: ${short}`, detail: `Gut: ${good} · Anders: ${bad}` });
+    addXP(60, "Präsentation reflektiert", { kind: "Anwenden", title: `Präsentation gehalten: ${short}`, detail: `Gut: ${good} · Anders: ${bad}` });
 
-    await say("Möchtest du auch die Meinung deiner Kollegen einholen? Ihre Kompass-Assistenten fragen kurz nach und bringen mir das Feedback. Diese drei waren dabei:");
+    await say("Magst du auch Feedback von deinen Kollegen? Ihre Kompass-Assistenten fragen kurz nach. Diese drei waren dabei:");
     setChips([]);
     const selId = push({ from: "bot", kind: "peerSelect" });
     const names = await waitCard<string[] | null>(selId);
     let feedback: PeerFeedback[] = [];
     if (names && names.length) {
-      push({ from: "me", kind: "text", text: `Ja, bitte frag ${names.map((n) => n.split(" ")[0]).join(", ")}.` });
-      addXP(40, "Feedback angefragt", { kind: "Feedback", title: `Feedback angefragt bei ${names.length} Kolleg:innen` });
-      await say(`Anfragen sind raus. Ich sage Bescheid, sobald Antworten da sind …`, 300);
+      push({ from: "me", kind: "text", text: `Ja, frag ${names.map((n) => n.split(" ")[0]).join(", ")}.` });
+      addXP(40, "Feedback angefragt", { kind: "Feedback", title: `Feedback angefragt bei ${names.length} Kollegen` });
+      await say("Anfragen sind raus. Ich sage Bescheid, sobald Antworten da sind …", 300);
       const out = await ai("peers", { names, topic, how, good, bad }, fallback.peers(names));
       feedback = out.feedback;
       for (const f of feedback) {
-        await sleep(1100);
+        await sleep(1000);
         push({ from: "bot", kind: "peer", data: f });
         update((s) => {
           s.feedbackReceived = [...s.feedbackReceived.filter((x) => x.name !== f.name), f];
@@ -388,11 +459,11 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       }
       award("feedback");
     } else {
-      push({ from: "me", kind: "text", text: "Nein, danke." });
+      push({ from: "me", kind: "text", text: "Später." });
       await say("Alles klar, dann nehmen wir deine eigene Einschätzung.", 300);
     }
 
-    await say("Ich führe jetzt alles zusammen und aktualisiere deinen Lernpfad …", 300);
+    await say("Ich führe alles zusammen und aktualisiere deine Lernreise …", 300);
     const syn = await ai<SynthOut>("synth", { topic, how, good, bad, feedback }, fallback.synth());
     const before = praesPct();
     applyLevels(syn.levelChanges, feedback.length ? ["Selbst", "Kollegen"] : ["Selbst"]);
@@ -408,19 +479,28 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       s.phase = "done";
     });
     await say(syn.summary, 200);
-    note(`Präsentieren ${before} % → ${after} %`);
-    push({ from: "bot", kind: "recs", data: { recs: syn.recommendations } });
+    push({ from: "bot", kind: "update", data: { before, after, learned: syn.memory[0], recs: syn.recommendations } });
     push({ from: "bot", kind: "loop" });
     addXP(50, "Learning Loop geschlossen", { kind: "Reflexion", title: "Learning Loop geschlossen, Lernpfad erweitert" });
     award("loop");
-    setHighlight("praes");
-    setArea("komm");
-    await say("Die neuen Vorschläge sind in deinem Lernpfad markiert. Und was ich gelernt habe, merke ich mir für unsere nächsten Gespräche.");
+    await say("Die neuen Vorschläge liegen in deiner Lernreise. Und was ich gelernt habe, merke ich mir für unsere nächsten Gespräche.");
   }
 
   async function freeChat(text: string) {
     const ph = sRef.current.phase;
     if (/zeitsprung/i.test(text)) return timeJump();
+    if (/lernreise ansehen/i.test(text)) {
+      setReise((r) => ({ ...r, view: "home" }));
+      setTab("reise");
+      return;
+    }
+    if (/erfolge ansehen/i.test(text)) {
+      setTab("erfolge");
+      return;
+    }
+    if (/generalprobe aufnehmen/i.test(text) && sRef.current.presentation) {
+      return practice(sRef.current.presentation.topic, false);
+    }
     if ((ph === "ready" || ph === "done") && PRESENT_RE.test(text)) return presentFlow();
     const history = sRef.current.messages
       .filter((m) => m.kind === "text" && m.text)
@@ -432,26 +512,48 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
 
   function timeJump() {
     const p = sRef.current.presentation;
+    setSheet(false);
     if (sRef.current.phase !== "waiting" || !p?.at) {
-      void say("Gerade steht kein Termin an, zu dem ich nachfragen könnte.", 200);
+      toast("Gerade steht kein Termin an.", "info");
       return Promise.resolve();
     }
-    const target = new Date(p.at).getTime() + 3 * 3600e3;
+    const target = new Date(p.at).getTime() + 75 * 60e3;
     update((s) => {
       s.timeOffsetMs = target - Date.now();
     });
-    toast(`Zeitsprung: ${fmtClock(new Date(target))}`, "info");
+    setReise((r) => ({ ...r, view: "home" }));
+    setTab("reise");
+    toast(`Zeitsprung: ${fmtClock(new Date(target))}, nach dem Termin`, "info");
     return Promise.resolve();
   }
 
+  function isDue(s: AppState) {
+    if (s.phase !== "waiting" || !s.presentation?.at || s.presentation.followedUp) return false;
+    return Date.now() + s.timeOffsetMs >= new Date(s.presentation.at).getTime() + 30 * 60e3;
+  }
+
   function checkDue() {
-    const s = sRef.current;
-    if (s.phase !== "waiting" || !s.presentation?.at || s.presentation.followedUp) return;
-    if (now().getTime() < new Date(s.presentation.at).getTime() + 30 * 60e3) return;
-    setNotif(true);
+    if (!isDue(sRef.current)) return;
+    if (tabRef.current !== "coach") {
+      setUnread(true);
+      return;
+    }
     setTimeout(() => {
-      if (!busyRef.current && sRef.current.phase === "waiting") void runFlow(followUp);
-    }, 2200);
+      if (!busyRef.current && isDue(sRef.current) && tabRef.current === "coach") void runFlow(followUp);
+    }, 1500);
+  }
+
+  function startFollowUp() {
+    setTab("coach");
+    if (!busyRef.current) void runFlow(followUp);
+  }
+
+  function startPractice() {
+    setTab("coach");
+    const p = sRef.current.presentation;
+    if (!p || busyRef.current) return;
+    push({ from: "me", kind: "text", text: "Generalprobe aufnehmen" });
+    void runFlow(() => practice(p.topic, false));
   }
 
   // ---------- input ----------
@@ -461,6 +563,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     setInput("");
     push({ from: "me", kind: "text", text: t });
     setChips([]);
+    setMulti(null);
     const p = pending.current;
     if (p) {
       pending.current = null;
@@ -470,66 +573,100 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     if (!busyRef.current) void runFlow(() => freeChat(t));
   }
 
+  function toggleMulti(o: string) {
+    setMulti((m) => (m ? { ...m, selected: m.selected.includes(o) ? m.selected.filter((x) => x !== o) : [...m.selected, o] } : m));
+  }
+
   // ---------- lifecycle ----------
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    try {
+      const v = localStorage.getItem("kompass-script") === "1";
+      scriptRef.current = v;
+      setScriptState(v);
+    } catch {}
     const ph = sRef.current.phase;
-    // Interactive cards from an earlier session cannot be resumed.
+    // Interaktive Karten aus einer früheren Sitzung lassen sich nicht fortsetzen.
     update((s) => {
-      for (const m of s.messages) if (["video", "peerSelect", "options"].includes(m.kind) && m.from === "bot") m.data = { ...(m.data || {}), done: true };
+      for (const m of s.messages)
+        if (["video", "peerSelect", "options", "analyzing"].includes(m.kind) && m.from === "bot") m.data = { ...(m.data || {}), done: true, step: 4 };
     });
     if (ph === "new" || ph === "onboarding") void runFlow(onboarding);
     else {
       setIdleChips();
-      if (ph !== "waiting") note(`Willkommen zurück, ${sRef.current.profile?.name || ""}!`);
+      if (!isDue(sRef.current)) note(`Willkommen zurück, ${sRef.current.profile?.name || ""}!`);
       checkDue();
     }
     const iv = setInterval(() => {
       setTick((t) => t + 1);
       if (!busyRef.current) checkDue();
     }, 30000);
-    return () => clearInterval(iv);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.altKey && (e.key === "D" || e.key === "d" || e.code === "KeyD")) {
+        e.preventDefault();
+        setSheet((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("keydown", onKey);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (S.phase === "waiting") checkDue();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [S.timeOffsetMs]);
+    if (tab === "coach") requestAnimationFrame(() => logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }));
+  }, [S.messages.length, typing, chips, multi, tab]);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [S.messages.length, typing, chips]);
+    if (tab === "coach" && !busyRef.current) checkDue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   async function resetAll() {
-    if (!window.confirm("Profil zurücksetzen und Demo neu starten?")) return;
     await fetch(`/api/state?u=${encodeURIComponent(S.username)}`, { method: "DELETE" }).catch(() => {});
     window.location.reload();
   }
+
+  // Demo-Steuerung: Logo lange drücken oder Rechtsklick, Shift+Alt+D
+  const logoProps = {
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      setSheet(true);
+    },
+    onPointerDown: () => {
+      pressTimer.current = setTimeout(() => setSheet(true), 650);
+    },
+    onPointerUp: () => pressTimer.current && clearTimeout(pressTimer.current),
+    onPointerLeave: () => pressTimer.current && clearTimeout(pressTimer.current),
+  };
 
   // ---------- render ----------
   const renderMsg = (m: Msg) => {
     const d = m.data || {};
     switch (m.kind) {
       case "note":
-        return <div className="note-pill">{m.text}</div>;
+        return <span className="pill-note">{m.text}</span>;
       case "options":
         return <OptionsCard options={d.options} onPick={!d.done ? (l) => submit(l) : undefined} />;
       case "slides":
         return <SlidesCard slides={d.slides} />;
       case "feedback":
-        return <FeedbackCard good={d.good} improve={d.improve} tip={d.tip} frames={d.frames} />;
+        return <FeedbackCard good={d.good} improve={d.improve} tip={d.tip} frames={d.frames} before={d.before} after={d.after} />;
       case "peerSelect":
-        return <PeerSelectCard done={d.done} onSend={(names) => resolveCard(m.id, names)} />;
+        return <PeerAskCard done={d.done} onSend={(names) => resolveCard(m.id, names)} />;
       case "peer":
         return <PeerCard f={d} />;
-      case "recs":
-        return <RecsCard recs={d.recs} />;
+      case "update":
+        return <UpdateCard before={d.before} after={d.after} learned={d.learned} recs={d.recs || []} />;
       case "loop":
         return <LoopCard />;
       case "summary":
         return <SummaryCard name={d.name} focus={d.focus} />;
+      case "analyzing":
+        return <AnalyzingCard step={d.step || 0} frames={d.frames} transcript={d.transcript} />;
       case "video":
         if (m.from === "me")
           return d.url ? (
@@ -544,110 +681,280 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     }
   };
 
-  const cardKinds = ["options", "slides", "feedback", "peerSelect", "peer", "recs", "loop", "summary", "video"];
+  const blockKinds = ["options", "slides", "feedback", "peerSelect", "peer", "update", "loop", "summary", "video", "analyzing"];
+  const onboardingNow = S.phase === "new" || S.phase === "onboarding";
+  const due = isDue(S);
+  const nowD = new Date(Date.now() + S.timeOffsetMs);
 
   return (
-    <div className="app">
-      <header className="top">
-        <div className="brand">
-          <svg viewBox="0 0 32 32" aria-hidden>
-            <circle cx="16" cy="16" r="14" />
-            <path d="M16 6 L20 16 L16 26 L12 16 Z" />
-          </svg>
-          <span>
-            <strong>Kompass</strong>
-            <small>{COMPANY.short} Lern-Coach</small>
-          </span>
-        </div>
-        <div className="viewswitch">
-          <button className={view === "chat" ? "on" : ""} onClick={() => setView("chat")}>
-            Chat
-          </button>
-          <button className={view === "path" ? "on" : ""} onClick={() => setView("path")}>
-            Lernreise
-          </button>
-        </div>
-        <div className="topright">
-          <span className="clock" title="Demo-Uhrzeit">
-            {fmtClock(now())}
-          </span>
-          <span className={`ai ${live ? "live" : ""}`} title={live ? "Antworten kommen live von Claude" : "Kein API-Key: geskriptete Antworten"}>
-            {live ? "KI live" : "Skript-Modus"}
-          </span>
-          <details className="demo" ref={demoRef}>
-            <summary>Demo</summary>
-            <div onClick={() => demoRef.current?.removeAttribute("open")}>
-              <button disabled={S.phase !== "waiting" || busy} onClick={() => void timeJump()}>
-                Zeitsprung nach der Präsentation
-              </button>
-              <button onClick={resetAll}>Profil zurücksetzen</button>
-              <button onClick={onLogout}>Abmelden ({S.username})</button>
+    <MotionConfig reducedMotion="user">
+    <div className="stage">
+      <div className="app">
+        <AnimatePresence mode="popLayout" initial={false}>
+        {tab === "coach" && (
+          <Screen k="coach">
+          <section className="coach">
+            {onboardingNow ? (
+              <>
+                <div className="hd">
+                  <span className="rb logo" {...logoProps}>
+                    <Icon name="logo" />
+                  </span>
+                  <div className="t">
+                    Kennenlernen
+                    <small>
+                      Frage {Math.max(1, obStep || 1)} von {OB_TOTAL}
+                    </small>
+                  </div>
+                </div>
+                <Progress className="bar thin" value={(Math.max(0, (obStep || 1) - 1) / OB_TOTAL) * 100} />
+              </>
+            ) : (
+              <div className="hd">
+                <span className="av logo" style={{ background: "var(--acc)" }} {...logoProps} title="Lange drücken: Demo-Steuerung">
+                  <Icon name="logo" />
+                </span>
+                <div className="t">
+                  Kompass
+                  <small>Dein Coach · kennt deine Lernreise</small>
+                </div>
+                {(script || !live) && <Badge variant="accent">Skript</Badge>}
+              </div>
+            )}
+            <div className="log" ref={logRef}>
+              {S.messages.map((m) => (
+                <motion.div
+                  key={m.id}
+                  layout="position"
+                  initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  style={{ transformOrigin: m.from === "me" ? "100% 100%" : "0% 100%" }}
+                  className={`msg ${m.from} ${m.kind === "note" ? "isnote" : blockKinds.includes(m.kind) && !(m.from === "me" && m.kind === "text") ? "block" : "bubble"}`}
+                >
+                  {renderMsg(m)}
+                </motion.div>
+              ))}
+              <AnimatePresence>
+                {typing && (
+                  <motion.div
+                    key="typing"
+                    className="msg bot bubble typing"
+                    aria-label="Kompass schreibt"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.12 } }}
+                    style={{ transformOrigin: "0% 100%" }}
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <motion.span
+                        key={i}
+                        className="dot"
+                        animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {multi && (
+                <motion.div className="chips" variants={CHIPS} initial="hidden" animate="show">
+                  {multi.options.map((o) => {
+                    const on = multi.selected.includes(o);
+                    return (
+                      <motion.div key={o} variants={CHIP} whileTap={{ scale: 0.94 }}>
+                      <Button size="chip" variant={on ? "default" : "outline"} onClick={() => toggleMulti(o)} aria-pressed={on}>
+                        {on && <Icon name="check" size={13} />}
+                        {o}
+                      </Button>
+                      </motion.div>
+                    );
+                  })}
+                  <Button size="chip" variant="accent" disabled={!multi.selected.length} onClick={() => submit(multi.selected.join(", "))}>
+                    Weiter <Icon name="send" size={13} />
+                  </Button>
+                </motion.div>
+              )}
+              {!multi && chips.length > 0 && (
+                <motion.div key={chips.join("|")} className="chips" variants={CHIPS} initial="hidden" animate="show">
+                  {chips.map((c) => (
+                    <motion.div key={c} variants={CHIP} whileTap={{ scale: 0.94 }}>
+                      <Button size="chip" variant="outline" onClick={() => submit(c)}>
+                        {c}
+                      </Button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
             </div>
-          </details>
-        </div>
-      </header>
-
-      <main className={`main view-${view}`}>
-        <section className="chat">
-          {notif && (
-            <button className="notif" onClick={() => !busyRef.current && void runFlow(followUp)}>
-              <svg viewBox="0 0 24 24" aria-hidden>
-                <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0" />
-              </svg>
-              <span>
-                <strong>Kompass</strong> Wie ist deine Präsentation gelaufen?
-              </span>
-            </button>
-          )}
-          <div className="log" ref={logRef}>
-            {S.messages.map((m) => (
-              <div key={m.id} className={`msg ${m.from} ${m.kind === "note" ? "isnote" : ""} ${cardKinds.includes(m.kind) ? "iscard" : ""}`}>
-                {renderMsg(m)}
-              </div>
-            ))}
-            {typing && (
-              <div className="msg bot typing" aria-label="Kompass schreibt">
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
-          </div>
-          <div className="composer">
-            {chips.length > 0 && (
-              <div className="chips">
-                {chips.map((c) => (
-                  <button key={c} className="chip" onClick={() => submit(c)}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
             <form
+              className="inp"
               onSubmit={(e) => {
                 e.preventDefault();
                 submit(input);
               }}
             >
-              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} aria-label="Nachricht" />
-              <button className="send" type="submit" aria-label="Senden" disabled={!input.trim()}>
-                <svg viewBox="0 0 24 24" aria-hidden>
-                  <path d="M4 12l16-8-6 16-2-6z" />
-                </svg>
-              </button>
+              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} aria-label="Nachricht" className="h-full rounded-full bg-transparent px-3 font-medium shadow-none focus-visible:ring-0" />
+              <Button type="submit" size="icon-lg" aria-label="Senden" disabled={!input.trim()}>
+                <Icon name="send" />
+              </Button>
             </form>
-          </div>
-        </section>
-        <Panel state={S} highlight={highlight} area={area} setArea={setArea} />
-      </main>
+          </section>
+          </Screen>
+        )}
 
-      <div className="toasts" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`}>
-            {t.text}
-          </div>
-        ))}
+        {tab === "reise" && (
+          <Screen k={`reise-${reise.view}-${reise.area}`} dir={reise.view === "area" ? 1 : -1}>
+          {reise.view === "area" ? (
+            <AreaView
+              state={S}
+              areaId={reise.area}
+              skillId={reise.skill}
+              onSkill={(id) => setReise((r) => ({ ...r, skill: id }))}
+              onBack={() => setReise((r) => ({ ...r, view: "home" }))}
+            />
+          ) : (
+            <Home
+              state={S}
+              now={nowD}
+              followUpDue={due}
+              onFollowUp={startFollowUp}
+              onPractice={startPractice}
+              onOpenArea={(id) => {
+                const a = S.areas.find((x) => x.id === id);
+                setReise({ view: "area", area: id, skill: id === "komm" ? "praes" : a?.skills[0]?.id || "" });
+              }}
+            />
+          )}
+          </Screen>
+        )}
+        {tab === "team" && (
+          <Screen k="team">
+            <TeamView state={S} />
+          </Screen>
+        )}
+        {tab === "erfolge" && (
+          <Screen k="erfolge">
+            <ErfolgeView state={S} now={nowD} />
+          </Screen>
+        )}
+        </AnimatePresence>
+
+        {!onboardingNow && (
+          <nav className="nav">
+            {(
+              [
+                ["coach", "chat", "Coach"],
+                ["reise", "orb", "Reise"],
+                ["team", "team", "Team"],
+                ["erfolge", "star", "Erfolge"],
+              ] as [Tab, string, string][]
+            ).map(([id, icon, label]) => (
+              <button
+                key={id}
+                className={tab === id ? "on" : ""}
+                onClick={() => {
+                  if (id === "reise" && tab === "reise") setReise((r) => ({ ...r, view: "home" }));
+                  setTab(id);
+                }}
+                aria-current={tab === id ? "page" : undefined}
+              >
+                {tab === id && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
+                <Icon name={icon} />
+                {label}
+                <AnimatePresence>
+                  {id === "coach" && unread && tab !== "coach" && (
+                    <motion.i className="udot" initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} exit={{ scale: 0 }} />
+                  )}
+                </AnimatePresence>
+              </button>
+            ))}
+          </nav>
+        )}
+
+        <div className="toasts" aria-live="polite">
+          <AnimatePresence initial={false}>
+            {toasts.map((t) => (
+              <motion.div
+                key={t.id}
+                layout
+                className={`toast ${t.kind}`}
+                initial={{ opacity: 0, y: -16, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: t.kind === "badge" || t.kind === "level" ? [0.9, 1.08, 1] : 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.18 } }}
+                transition={{ type: "spring", stiffness: 420, damping: 26 }}
+              >
+                {t.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        <DemoSheet
+          open={sheet}
+          onClose={() => setSheet(false)}
+          canJump={S.phase === "waiting" && !busy && !!S.presentation?.at}
+          onJump={() => void timeJump()}
+          live={live}
+          script={script}
+          setScript={setScript}
+          onReset={resetAll}
+          onLogout={onLogout}
+        />
       </div>
+
+      <aside className="side">
+        <b className="h-md">Kompass</b>
+        <p className="mut">Dein persönlicher Lern-Coach bei {COMPANY.short}. Die App ist fürs Handy gemacht, hier siehst du sie in Handybreite.</p>
+        <p className="mut xs">Demo-Steuerung: Logo im Coach lange drücken oder rechts klicken, oder Shift + Alt + D.</p>
+        <Button variant="secondary" onClick={() => setSheet(true)}>
+          Demo-Steuerung öffnen
+        </Button>
+        <span className="mut xs">
+          Angemeldet als <b>{S.username}</b> · {live && !script ? "KI live" : "Skript-Modus"}
+        </span>
+      </aside>
     </div>
+    </MotionConfig>
+  );
+}
+
+function AnalyzingCard({ step, frames, transcript }: { step: number; frames?: number; transcript?: boolean }) {
+  const items = [
+    frames ? `${frames} Standbilder ausgewählt` : "Standbilder ausgewählt",
+    transcript ? "Sprache transkribiert" : "Sprechweise ausgewertet",
+    "Mit deinem Soll-Profil abgeglichen",
+  ];
+  return (
+    <Card>
+      <b>{step >= 4 ? "Analyse fertig" : "Ich schaue mir deine Aufnahme an …"}</b>
+      <div className="steps">
+        {items.map((t, i) => {
+          const doneI = step > i;
+          const active = step === i;
+          return (
+            <div key={t} className={`row ${doneI ? "" : "mut"}`}>
+              <span className={`ck sm ${doneI ? "a" : ""} ${active ? "pulse" : ""}`}>{doneI ? <Icon name="check" size={12} /> : null}</span>
+              <span>{t}</span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function Screen({ k, dir = 1, children }: { k: string; dir?: number; children: React.ReactNode }) {
+  return (
+    <motion.div
+      key={k}
+      className="screen"
+      initial={{ opacity: 0, x: 24 * dir }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -24 * dir, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+    >
+      {children}
+    </motion.div>
   );
 }
