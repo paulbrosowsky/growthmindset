@@ -65,7 +65,23 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
+  target: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+    </>
+  ),
+  cal: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="3" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </>
+  ),
+  shield: <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" />,
   chev: <path d="M9 5l7 7-7 7" />,
+  down: <path d="M6 9l6 6 6-6" />,
+  ext: <path d="M7 17L17 7M9 7h8v8" />,
   restart: <path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4.5h4.5" />,
 };
 

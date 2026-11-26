@@ -8,7 +8,7 @@ import { Card } from "@/components/shadcn/card";
 import { Progress } from "@/components/shadcn/progress";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/shadcn/sheet";
 import { Icon, Ring, ConcentricRings, ITEM, MCard, STAGGER } from "./ui";
-import { areaProgress, BADGES, findSkill, levelOf, skillProgress, targetLevel, TEAM, XP_PER_LEVEL } from "@/lib/knowledge";
+import { areaProgress, BADGES, FIXED_DATES, findSkill, levelOf, MANDATORY, MANDATORY_DONE_DEFAULT, roleFor, skillLevel, skillProgress, targetLevel, TEAM } from "@/lib/knowledge";
 import type { AppState, Rec, Skill } from "@/lib/types";
 
 const WD_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
@@ -32,92 +32,28 @@ export function initials(name: string) {
 
 const SOURCE_LABEL: Record<string, string> = { Übung: "Aktivitäten", Selbst: "Selbstbild", Kollegen: "Kollegen" };
 
-/* ---------------- Home ---------------- */
+/* ---------------- Kompetenzen (alle Bereiche) ---------------- */
 
-export function Home({
-  state,
-  now,
-  onOpenArea,
-  onNext,
-  onPractice,
-  onFollowUp,
-  followUpDue,
-}: {
-  state: AppState;
-  now: Date;
-  onOpenArea: (id: string) => void;
-  onNext: () => void;
-  onPractice: () => void;
-  onFollowUp: () => void;
-  followUpDue: boolean;
-}) {
-  const p = state.profile;
+export function KompetenzenView({ state, onOpenArea, onBack }: { state: AppState; onOpenArea: (id: string) => void; onBack: () => void }) {
   const lvl = levelOf(state.xp);
-  const inLevel = state.xp % XP_PER_LEVEL;
-  const praes = findSkill(state.areas, "praes");
-  const praesPct = praes ? skillProgress(praes) : 0;
-  const pres = state.presentation;
-  let when = "";
-  if (pres?.at) {
-    const at = new Date(pres.at);
-    const d0 = new Date(now);
-    d0.setHours(0, 0, 0, 0);
-    const diff = Math.round((new Date(at).setHours(0, 0, 0, 0) - d0.getTime()) / 864e5);
-    when = `${diff === 0 ? "Heute" : diff === 1 ? "Morgen" : WD_LONG[at.getDay()]} ${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
-  }
   return (
     <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
       <div className="hd">
+        <button className="rb" onClick={onBack} aria-label="Zurück">
+          <Icon name="back" />
+        </button>
         <div className="t">
-          <small>{longDate(now)}</small>
-          Hallo {p?.name || state.username}
+          Deine Kompetenzen
+          <small>{state.areas.length} Bereiche</small>
         </div>
-        <span className="av">{initials(p?.name || state.username)}</span>
       </div>
-
-      {followUpDue && (
-        <motion.button variants={ITEM} className="noti" onClick={onFollowUp}>
-          <span className="ib">
-            <Icon name="bell" />
-          </span>
-          <div style={{ flex: 1 }}>
-            <b>Wie ist deine Präsentation gelaufen?</b>
-            <div className="mut">
-              Zwei Minuten Reflexion, <span style={{ whiteSpace: "nowrap" }}>+60 XP</span>
-            </div>
-          </div>
-        </motion.button>
-      )}
-      {!followUpDue && pres?.at && state.phase === "waiting" && (
-        <motion.div variants={ITEM} className="noti">
-          <span className="ib">
-            <Icon name="bell" />
-          </span>
-          <div style={{ flex: 1 }}>
-            <b>
-              {when} präsentierst du die {shortTopic(pres.topic)}.
-            </b>
-            <div className="mut" style={{ margin: "2px 0 6px" }}>
-              {pres.practiced ? "Generalprobe erledigt. Du bist vorbereitet." : "Heute noch eine Generalprobe?"}
-            </div>
-            {!pres.practiced && <Button onClick={onPractice}>Jetzt üben</Button>}
-          </div>
-        </motion.div>
-      )}
-
       <MCard variants={ITEM}>
         <div className="row between" style={{ marginBottom: 6 }}>
-          <h3 style={{ fontSize: 14 }}>Deine Lernreise</h3>
+          <h3 style={{ fontSize: 14 }}>Gesamt</h3>
           <span className="xp">{state.xp.toLocaleString("de-DE")} XP</span>
         </div>
         <div style={{ display: "grid", justifyItems: "center", margin: "24px 0 30px" }}>
-          <ConcentricRings
-            size={224}
-            width={10}
-            gap={18}
-            outer={106}
-            rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}
-          >
+          <ConcentricRings size={224} width={10} gap={18} outer={106} rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}>
             <b className="lvl-big">
               Level
               <br />
@@ -160,8 +96,8 @@ export function AreaView({
   const area = state.areas.find((a) => a.id === areaId) ?? state.areas[0];
   const sk = area.skills.find((s) => s.id === skillId) ?? area.skills[0];
   const pct = skillProgress(sk);
-  const soll = targetLevel(sk.id, state.focus);
-  const role = state.profile?.role?.split(",")[0] || "deine Rolle";
+  const soll = targetLevel(sk.id, state.focus, state.profile?.role);
+  const role = roleFor(state.profile?.role).name;
   const rec = [...sk.recs].sort((a, b) => Number(b.type === "Üben") - Number(a.type === "Üben") || Number(!!b.fresh) - Number(!!a.fresh))[0];
   return (
     <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">

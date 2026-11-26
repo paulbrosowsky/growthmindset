@@ -5,19 +5,20 @@ import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import type { VideoResult } from "./VideoRecorder";
 import Rehearsal, { type RehearsalState } from "./Rehearsal";
 import { LinkCard, OptionsCard, PeerAskCard, ProfileSummaryCard, RichText, SlidesCard, SummaryCard } from "./Cards";
-import { AreaView, DemoSheet, Home, SkillUpdateView, TeamView } from "./views";
+import { AreaView, DemoSheet, KompetenzenView, SkillUpdateView, TeamView } from "./views";
+import { GoalsView, PathView, ProfileView, goalPath } from "./ziele";
 import { Icon } from "./ui";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
 import { fallback, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
-import { BADGES, COMPANY, findSkill, initialState, levelOf, skillProgress, TEAM } from "@/lib/knowledge";
+import { BADGES, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string };
-type Tab = "coach" | "reise" | "team";
-type Reise = { view: "home" | "area" | "update"; area: string; skill: string };
+type Tab = "coach" | "ziele" | "team";
+type Reise = { view: "home" | "kompetenzen" | "area" | "update" | "pfad" | "profil"; area: string; skill: string; from?: "home" | "kompetenzen" | "profil" };
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
 const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
@@ -343,6 +344,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     };
     update((s) => {
       s.profile = profile;
+      s.goalSetAt = now().toISOString();
     });
     setObStep(OB_TOTAL + 2);
     const w = await ai("welcome", {}, fallback.welcome(profile));
@@ -366,9 +368,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     push({ from: "bot", kind: "summary", data: { focus } });
     addXP(50, { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    await say(`Dein erster Schritt: **${w.firstStep}**. Wollen wir direkt loslegen, oder schaust du erst in deinen Lernpfad?`);
-    const next = await ask(["Loslegen", "Lernpfad ansehen"]);
-    if (/lernpfad/i.test(next)) {
+    await say(`Dein erster Schritt: **${w.firstStep}**. Wollen wir direkt loslegen, oder schaust du erst in deine Ziele?`);
+    const next = await ask(["Loslegen", "Ziele ansehen"]);
+    if (/ziele/i.test(next)) {
       openReise("home");
       await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
     } else {
@@ -489,7 +491,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         sk?.recs.unshift({ id: uid(), type: idx === 0 ? "Intern" : "Ressource", title: opt.title, meta: opt.detail, fresh: true });
       });
       addXP(15, { kind: "Lernen", title: opt.title });
-      await say(`„${opt.title}“ liegt in deiner Lernreise. Noch eine kurze Generalprobe?`);
+      await say(`„${opt.title}“ ist für dich vorgemerkt. Noch eine kurze Generalprobe?`);
       const more = await ask(["Ja, mit Slides", "Ja, ohne Slides", "Nein, danke"]);
       if (!/nein/i.test(more)) await practice(topic, /mit slides/i.test(more));
       return askTime();
@@ -568,7 +570,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   async function freeChat(text: string) {
     const ph = sRef.current.phase;
     if (/zeitsprung/i.test(text)) return timeJump();
-    if (/lernreise ansehen/i.test(text)) return openReise("home");
+    if (/(lernreise|ziele) ansehen/i.test(text)) return openReise("home");
     if (/generalprobe starten/i.test(text) && sRef.current.presentation) {
       await practice(sRef.current.presentation.topic, false);
       return;
@@ -582,9 +584,49 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     await say(out.text, 100);
   }
 
+  /** Demo: Pflichtfortbildung absolvieren (öffnet sonst das Lernportal). */
+  function doMandatory(id: string) {
+    const m = MANDATORY.find((x) => x.id === id);
+    if (!m) return;
+    update((s) => {
+      const done = s.mandatoryDone ?? MANDATORY_DONE_DEFAULT;
+      if (!done.includes(id)) s.mandatoryDone = [...done, id];
+    });
+    addXP(30, { kind: "Lernen", title: `Pflichtfortbildung „${m.title}“ abgeschlossen` });
+    toast(`${m.title} erledigt, +30 XP`);
+  }
+
+  /** Lernpfad: aktuelle Challenge abhaken. */
+  function doChallenge(c: Challenge) {
+    const path = goalPath(sRef.current, new Date(Date.now() + sRef.current.timeOffsetMs));
+    if (!path) return;
+    update((s) => {
+      const done = s.pathDone ?? path.done;
+      if (!done.includes(c.id)) s.pathDone = [...done, c.id];
+    });
+    addXP(CHALLENGE_XP[c.kind], { kind: c.kind === "Reflexion" ? "Reflexion" : c.kind === "Lernen" ? "Lernen" : c.kind === "Üben" ? "Üben" : "Anwenden", title: `Challenge „${c.title}“ geschafft` });
+    toast(`${c.title} erledigt, +${CHALLENGE_XP[c.kind]} XP`);
+  }
+
+  /** Lernpfad: Challenge mit Kompass im Coach vorbereiten. */
+  function prepChallenge(c: Challenge) {
+    setTab("coach");
+    if (busyRef.current || sRef.current.phase === "onboarding" || sRef.current.phase === "new") return;
+    submit(`Hilf mir, die Challenge „${c.title}“ vorzubereiten.`);
+  }
+
+  function readSop(id: string) {
+    update((s) => {
+      const read = s.sopRead ?? SOPS.filter((x) => x.readDefault).map((x) => x.id);
+      if (!read.includes(id)) s.sopRead = [...read, id];
+    });
+    addXP(10, { kind: "Lernen", title: `SOP „${SOPS.find((x) => x.id === id)?.title}“ gelesen` });
+    toast("Als gelesen markiert, +10 XP");
+  }
+
   function openReise(view: Reise["view"]) {
     setReise((r) => ({ ...r, view }));
-    setTab("reise");
+    setTab("ziele");
   }
 
   function timeJump() {
@@ -854,7 +896,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                     </>
                   ) : (
                     <div className="hd">
-                      <motion.button whileTap={{ scale: 0.9 }} className="rb" aria-label="Zurück zur Lernreise" onClick={() => openReise("home")}>
+                      <motion.button whileTap={{ scale: 0.9 }} className="rb" aria-label="Zurück zu deinen Zielen" onClick={() => openReise("home")}>
                         <Icon name="back" />
                       </motion.button>
                       <span className="av logo" style={{ background: "var(--acc)" }} {...logoProps} title="Lange drücken: Demo-Steuerung">
@@ -956,31 +998,48 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                 </section>
               </Screen>
             )}
-            {tab === "reise" && (
-              <Screen k={`reise-${reise.view}-${reise.area}`} dir={reise.view === "home" ? -1 : 1}>
+            {tab === "ziele" && (
+              <Screen k={`ziele-${reise.view}-${reise.area}`} dir={reise.view === "home" ? -1 : 1}>
                 {reise.view === "area" ? (
                   <AreaView
                     state={S}
                     areaId={reise.area}
                     skillId={reise.skill}
                     onSkill={(id) => setReise((r) => ({ ...r, skill: id }))}
-                    onBack={() => setReise((r) => ({ ...r, view: "home" }))}
+                    onBack={() => setReise((r) => ({ ...r, view: r.from || "home" }))}
                     onRec={onRec}
                   />
                 ) : reise.view === "update" ? (
                   <SkillUpdateView state={S} onBack={() => setReise((r) => ({ ...r, view: "home" }))} />
+                ) : reise.view === "pfad" ? (
+                  <PathView state={S} now={nowD} onBack={() => setReise((r) => ({ ...r, view: "home" }))} onPrepare={prepChallenge} onDone={doChallenge} />
+                ) : reise.view === "profil" ? (
+                  <ProfileView
+                    state={S}
+                    onBack={() => setReise((r) => ({ ...r, view: "home" }))}
+                    onOpenAll={() => setReise((r) => ({ ...r, view: "kompetenzen", from: "profil" }))}
+                    onSopRead={readSop}
+                  />
+                ) : reise.view === "kompetenzen" ? (
+                  <KompetenzenView
+                    state={S}
+                    onBack={() => setReise((r) => ({ ...r, view: r.from === "profil" ? "profil" : "home", from: undefined }))}
+                    onOpenArea={(id) => {
+                      const a = S.areas.find((x) => x.id === id);
+                      const sk = a?.skills.find((k) => S.focus.includes(k.id)) ?? a?.skills[0];
+                      setReise({ view: "area", area: id, skill: sk?.id || "", from: "kompetenzen" });
+                    }}
+                  />
                 ) : (
-                  <Home
+                  <GoalsView
                     state={S}
                     now={nowD}
                     followUpDue={due}
                     onFollowUp={startFollowUp}
                     onPractice={startPractice}
-                    onNext={() => (S.phase === "done" ? openReise("update") : setReise({ view: "area", area: "komm", skill: "praes" }))}
-                    onOpenArea={(id) => {
-                      const a = S.areas.find((x) => x.id === id);
-                      setReise({ view: "area", area: id, skill: id === "komm" ? "praes" : a?.skills[0]?.id || "" });
-                    }}
+                    onMandatory={doMandatory}
+                    onOpenPath={() => setReise((r) => ({ ...r, view: "pfad" }))}
+                    onOpenProfile={() => setReise((r) => ({ ...r, view: "profil" }))}
                   />
                 )}
               </Screen>
@@ -997,7 +1056,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
               {(
                 [
                   ["coach", "chat", "Coach"],
-                  ["reise", "orb", "Reise"],
+                  ["ziele", "target", "Ziele"],
                   ["team", "team", "Team"],
                 ] as [Tab, string, string][]
               ).map(([id, icon, label]) => (
@@ -1005,7 +1064,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                   key={id}
                   className={tab === id ? "on" : ""}
                   onClick={() => {
-                    if (id === "reise" && tab === "reise") setReise((r) => ({ ...r, view: "home" }));
+                    if (id === "ziele" && tab === "ziele") setReise((r) => ({ ...r, view: "home" }));
                     setTab(id);
                   }}
                   aria-current={tab === id ? "page" : undefined}

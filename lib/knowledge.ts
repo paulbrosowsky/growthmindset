@@ -16,21 +16,47 @@ export const COMPANY = {
   roles: [
     {
       name: "Produktmanager/in",
-      core: ["Präsentieren (Soll 4/5)", "Produktmanagement (Soll 4/5)", "Datenanalyse (Soll 3/5)", "Moderation (Soll 3/5)"],
+      match: "produkt|product|pm\\b",
+      mission: "Verantwortet Produkte von der Idee bis zum Markterfolg.",
+      core: [
+        { skill: "praes", soll: 4 },
+        { skill: "pm", soll: 4 },
+        { skill: "daten", soll: 3 },
+        { skill: "mod", soll: 3 },
+      ],
     },
     {
       name: "Entwickler/in",
-      core: ["Wärmepumpen-Technik (Soll 4/5)", "Agiles Arbeiten (Soll 4/5)", "Feedback geben (Soll 3/5)"],
+      match: "entwick|develop|software|engineer|programm",
+      mission: "Baut Steuerungen und Software für unsere Wärmepumpen.",
+      core: [
+        { skill: "wp", soll: 4 },
+        { skill: "agil", soll: 4 },
+        { skill: "fb", soll: 3 },
+      ],
     },
     {
       name: "UX-Designer/in",
-      core: ["Nutzerforschung (Soll 5/5)", "Präsentieren (Soll 3/5)", "Moderation (Soll 3/5)"],
+      match: "ux|design|nutzer",
+      mission: "Macht unsere Produkte einfach und verständlich.",
+      core: [
+        { skill: "ux", soll: 5 },
+        { skill: "praes", soll: 3 },
+        { skill: "mod", soll: 3 },
+      ],
     },
     {
       name: "Teamleiter/in",
-      core: ["Feedback geben (Soll 5/5)", "Moderation (Soll 4/5)", "Resilienz (Soll 4/5)", "Präsentieren (Soll 4/5)"],
+      match: "team|leit|führ|lead|manager",
+      mission: "Führt ein Team und entwickelt Menschen weiter.",
+      core: [
+        { skill: "fb", soll: 5 },
+        { skill: "mod", soll: 4 },
+        { skill: "resi", soll: 4 },
+        { skill: "praes", soll: 4 },
+      ],
     },
-  ],
+  ] as { name: string; match: string; mission: string; core: { skill: string; soll: number }[] }[],
 };
 
 export const CATALOG: { title: string; type: string; duration: string; skill: string }[] = [
@@ -71,10 +97,102 @@ export const BADGES: Record<string, { name: string; text: string }> = {
   mutig: { name: "Mutig", text: "Eine Aufgabe außerhalb der Komfortzone angepackt" },
 };
 
-/** Target level (Soll) of a skill for the person's role; demo heuristic. */
-export function targetLevel(skillId: string, focus: string[]): number {
-  return skillId === "praes" || focus.includes(skillId) ? 4 : 3;
+export type RoleProfile = (typeof COMPANY.roles)[number];
+
+/** Stellenprofil zur frei eingegebenen Rolle; ohne Treffer das Produktmanagement-Profil (Demo-Persona). */
+export function roleFor(role?: string): RoleProfile {
+  const r = (role || "").toLowerCase();
+  // Produkt zuerst prüfen, damit „Produktmanagerin“ nicht beim Teamleiter landet.
+  return COMPANY.roles.find((x) => new RegExp(x.match, "i").test(r)) ?? COMPANY.roles[0];
 }
+
+/** Soll-Stufe eines Skills: aus dem Stellenprofil, sonst Demo-Heuristik. */
+export function targetLevel(skillId: string, focus: string[], role?: string): number {
+  const core = roleFor(role).core.find((c) => c.skill === skillId);
+  if (core) return core.soll;
+  return focus.includes(skillId) ? 4 : 3;
+}
+
+/** Ist-Stufe eines Skills (0 bis 5) aus dem Fortschritt. */
+export const skillLevel = (sk: Skill) => Math.round(skillProgress(sk) / 20);
+
+/** Pflichtfortbildungen; Fälligkeit in Tagen ab Start der Demo. */
+export const MANDATORY: { id: string; title: string; meta: string; dueDays: number; desc: string; duration: string; last: string }[] = [
+  { id: "arbeitsschutz", title: "Unterweisung Arbeitsschutz", meta: "jährlich · 20 min", dueDays: 12, duration: "20 min", last: "Dez. 2025", desc: "Die jährliche Pflichtunterweisung: Gefahren am Arbeitsplatz, Verhalten im Notfall, Erste Hilfe. Mit kurzem Abschlusstest." },
+  { id: "infosec", title: "Informationssicherheit", meta: "jährlich · 30 min", dueDays: 26, duration: "30 min", last: "Jan. 2026", desc: "Phishing erkennen, sichere Passwörter, Umgang mit vertraulichen Daten. Mit Quiz am Ende." },
+  { id: "dsgvo", title: "Datenschutz (DSGVO)", meta: "alle 2 Jahre · 25 min", dueDays: -40, duration: "25 min", last: "Okt. 2026", desc: "Grundlagen der DSGVO und was sie für deinen Arbeitsalltag bedeuten." },
+  { id: "compliance", title: "Verhaltenskodex und Compliance", meta: "jährlich · 15 min", dueDays: -75, duration: "15 min", last: "Sept. 2026", desc: "Unser Verhaltenskodex in Beispielen: Geschenke, Interessenkonflikte, Fairness." },
+];
+
+/* ---------- Persönliche Ziele: Lernpfad mit Challenges ---------- */
+
+export type ChallengeKind = "Lernen" | "Üben" | "Anwenden" | "Reflexion";
+export type Challenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string };
+
+export const CHALLENGE_XP: Record<ChallengeKind, number> = { Lernen: 30, Üben: 60, Anwenden: 80, Reflexion: 40 };
+
+const ch = (id: string, area: string, title: string, kind: ChallengeKind, min: number, text: string): Challenge => ({ id, area, title, kind, min, text });
+
+/** Zwei Demo-Pfade: Konflikte (Standard) und Präsentieren. Gewählt nach dem Lernziel aus dem Onboarding. */
+export const GOAL_PATHS: Record<"konflikt" | "praes", { title: string; challenges: Challenge[] }> = {
+  konflikt: {
+    title: "Wie gehe ich mit Konfliktsituationen um?",
+    challenges: [
+      ch("k1", "fach", "Konfliktstufen nach Glasl", "Lernen", 15, "Neun Stufen, an denen du erkennst, wie weit ein Konflikt schon ist."),
+      ch("k2", "komm", "Ich-Botschaften üben", "Üben", 10, "Sag, was du wahrnimmst und was du brauchst, ohne Vorwurf."),
+      ch("k3", "fach", "Interessen statt Positionen", "Lernen", 15, "Frag nach dem Warum hinter einer Forderung."),
+      ch("k4", "meth", "Gespräch mit Leitfaden strukturieren", "Anwenden", 20, "Ein klarer Ablauf nimmt Druck raus. Probier ihn im nächsten Gespräch aus."),
+      ch("k5", "komm", "Feedback nach SBI", "Lernen", 30, "Situation, Verhalten, Wirkung: Feedback, das ankommt."),
+      ch("k6", "fach", "Konflikttypen im Team erkennen", "Lernen", 20, "Sach-, Beziehungs- oder Rollenkonflikt? Die Art bestimmt den Weg."),
+      ch("k7", "komm", "Schwieriges Gespräch simulieren", "Üben", 15, "Übe mit Kompass ein Gespräch, bei dem es hakt."),
+      ch("k8", "meth", "Hitzige Runde moderieren", "Anwenden", 30, "Bring eine Runde zurück zur Sache, wenn es laut wird."),
+      ch("k9", "komm", "Klärungsgespräch führen", "Anwenden", 30, "Führe das Gespräch, das du schon länger vor dir herschiebst."),
+      ch("k10", "meth", "Reflexion nach dem Gespräch", "Reflexion", 10, "Was lief gut, was nimmst du mit?"),
+    ],
+  },
+  praes: {
+    title: "",
+    challenges: [
+      ch("p1", "fach", "Storyline nach dem Pyramidenprinzip", "Lernen", 15, "Die Kernaussage zuerst, dann die Argumente."),
+      ch("p2", "komm", "Einstieg in 30 Sekunden", "Üben", 10, "Ein Satz, der die Runde sofort abholt."),
+      ch("p3", "fach", "Zahlen anschaulich zeigen", "Lernen", 15, "Eine Folie, eine Aussage, eine Zahl."),
+      ch("p4", "meth", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass Kompass Feedback geben."),
+      ch("p5", "komm", "Mit Fragen souverän umgehen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
+      ch("p6", "fach", "Roadmap-Folie schärfen", "Anwenden", 20, "Weniger Punkte, klarere Prioritäten."),
+      ch("p7", "komm", "Stimme und Pausen", "Üben", 10, "Pausen wirken sicherer als schnelle Sätze."),
+      ch("p8", "meth", "Präsentation halten", "Anwenden", 30, "Der echte Termin. Du bist vorbereitet."),
+      ch("p9", "komm", "Feedback einholen", "Anwenden", 15, "Frag zwei Kolleg/innen, was hängen blieb."),
+      ch("p10", "meth", "Reflexion danach", "Reflexion", 10, "Was nimmst du für die nächste Runde mit?"),
+    ],
+  },
+};
+
+export const goalPathKey = (goal?: string): "konflikt" | "praes" => (/präsent|praesent|vortrag|vorstell|roadmap|pitch|rede/i.test(goal || "") ? "praes" : "konflikt");
+export const PATH_DONE_DEFAULT = (key: "konflikt" | "praes") => GOAL_PATHS[key].challenges.slice(0, 3).map((c) => c.id);
+
+/** Weitere (zugeklappte) Ziele der Demo-Persona. */
+export const OTHER_GOALS: { id: string; title: string; status: "pausiert" | "erreicht"; meta: string; done: number; total: number; color: string; text: string }[] = [
+  { id: "daten", title: "Mit Daten überzeugen", status: "pausiert", meta: "pausiert · 2 von 8", done: 2, total: 8, color: "#E9B949", text: "Pausiert, solange du an deinem aktuellen Ziel arbeitest." },
+  { id: "praesentieren", title: "Sicher vor großen Runden präsentieren", status: "erreicht", meta: "erreicht · Oktober", done: 8, total: 8, color: "#7FB5A3", text: "Alle 8 Challenges geschafft. Stark." },
+];
+
+/* ---------- Stellenprofil: Jahresziele und SOPs ---------- */
+
+export const YEAR_GOALS: { id: string; title: string; meta: string; color: string }[] = [
+  { id: "roadmap", title: "Roadmap-Planung für Q1 übernehmen", meta: "bis März · mit Markus Weber vereinbart", color: "#7C9CD6" },
+  { id: "konflikt", title: "Konflikte im Team früh ansprechen", meta: "Teil deines aktuellen Ziels", color: "#E3907D" },
+];
+
+export const SOPS: { id: string; title: string; version: string; changed: string; summary: string; readDefault?: boolean }[] = [
+  { id: "release", title: "Release-Freigabe", version: "3.2", changed: "20. Nov.", summary: "Neu: Freigaben brauchen zusätzlich ein Okay aus dem Support. Die Checkliste hat dafür einen eigenen Schritt." },
+  { id: "anforderungen", title: "Anforderungen dokumentieren", version: "2.0", changed: "2. Okt.", summary: "Anforderungen stehen jetzt als User Stories mit Akzeptanzkriterien im Board.", readDefault: true },
+];
+export const MANDATORY_DONE_DEFAULT = ["dsgvo", "compliance"];
+
+/** Feste Demo-Termine; Tage ab Start der Demo, Uhrzeit. */
+export const FIXED_DATES: { id: string; title: string; sub: string; days: number; hour: number }[] = [
+  { id: "jg", title: "Entwicklungsgespräch", sub: "mit Markus Weber", days: 19, hour: 10 },
+];
 
 const r = (id: string, type: Rec["type"], title: string, meta: string): Rec => ({ id, type, title, meta });
 
@@ -274,6 +392,8 @@ export function initialState(username: string): AppState {
     areas: initialAreas(),
     xp: 1240,
     badges: [],
+    mandatoryDone: [...MANDATORY_DONE_DEFAULT],
+    sopRead: SOPS.filter((x) => x.readDefault).map((x) => x.id),
     journal: [
       {
         id: "seed1",
@@ -319,7 +439,8 @@ export function knowledgeText(): string {
     .join("\n");
   return [
     `# Unternehmen\n${COMPANY.name}: ${COMPANY.about}\nVision: ${COMPANY.vision}\nZiele: ${COMPANY.goals.join("; ")}\nWerte: ${COMPANY.values.join(", ")}`,
-    `# Rollen mit Soll-Profil\n${COMPANY.roles.map((ro) => `- ${ro.name}: ${ro.core.join(", ")}`).join("\n")}`,
+    `# Rollen mit Soll-Profil\n${COMPANY.roles.map((ro) => `- ${ro.name}: ${ro.core.map((c) => `${c.skill} Soll ${c.soll}/5`).join(", ")}`).join("\n")}`,
+    `# Pflichtfortbildungen\n${MANDATORY.map((m) => `- ${m.title} (${m.meta})`).join("\n")}`,
     `# Kompetenzmodell (Kompetenzbereiche > Skills [ID] > Teilkompetenzen [ID], Stufen 0 bis 5)\n${model}`,
     `# Fortbildungskatalog (nur diese internen Angebote nennen)\n${CATALOG.map((c) => `- ${c.title} (${c.type}, ${c.duration})`).join("\n")}`,
     `# Lernmethoden und Motivation\n${METHODS.map((m) => `- ${m}`).join("\n")}`,

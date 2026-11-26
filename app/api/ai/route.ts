@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
 import { fallback } from "@/lib/fallbacks";
-import { findSkill, skillProgress } from "@/lib/knowledge";
+import { findSkill, MANDATORY, MANDATORY_DONE_DEFAULT, roleFor, skillProgress } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -51,6 +51,11 @@ function context(s: AppState): string {
         )
         .join("\n"),
   );
+  const role = roleFor(p?.role);
+  lines.push(`Stellenprofil: ${role.name} (Soll: ${role.core.map((c) => `${c.skill} ${c.soll}/5`).join(", ")})`);
+  const done = s.mandatoryDone ?? MANDATORY_DONE_DEFAULT;
+  const open = MANDATORY.filter((m) => !done.includes(m.id));
+  if (open.length) lines.push(`Offene Pflichtfortbildungen: ${open.map((m) => m.title).join(", ")}`);
   if (s.journal.length)
     lines.push("Letzte Erfahrungen:\n" + s.journal.slice(0, 6).map((j) => `- ${j.kind}: ${j.title}${j.detail ? ` (${j.detail})` : ""}`).join("\n"));
   if (s.memory.length) lines.push("Was du dir über die Person gemerkt hast:\n" + s.memory.map((m) => `- ${m}`).join("\n"));

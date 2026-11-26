@@ -107,6 +107,14 @@ export type AppState = {
   areas: Area[];
   xp: number;
   badges: string[];
+  /** Erledigte Pflichtfortbildungen (IDs) */
+  mandatoryDone?: string[];
+  /** Erledigte Challenges im Lernpfad (IDs) */
+  pathDone?: string[];
+  /** Gelesene SOPs (IDs) */
+  sopRead?: string[];
+  /** Wann das 4-Wochen-Lernziel vereinbart wurde */
+  goalSetAt?: string;
   journal: Experience[];
   memory: string[];
   phase: Phase;
