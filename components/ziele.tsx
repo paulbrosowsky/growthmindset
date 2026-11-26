@@ -26,6 +26,7 @@ import {
   YEAR_GOALS,
   type Challenge,
 } from "@/lib/knowledge";
+import { saaLabel } from "@/lib/saa";
 import type { AppState } from "@/lib/types";
 
 const Path3D = dynamic(() => import("./Path3D"), { ssr: false, loading: () => <div className="p3d p3d-off" /> });
@@ -513,6 +514,11 @@ export function PathView({ state, now, onBack, onPrepare, onDone }: { state: App
                 <span className="mut" style={{ display: "block", marginTop: 4 }}>
                   {cState(sel) === 0 ? "Kommt später auf deinem Weg." : cState(sel) === 1 ? "Erledigt. Stark, dass du drangeblieben bist." : c.text}
                 </span>
+                {c.refs?.length ? (
+                  <small className="mut xs" style={{ display: "block", marginTop: 6 }}>
+                    Grundlage: {c.refs.map(saaLabel).join(" · ")}
+                  </small>
+                ) : null}
               </div>
             </div>
             <div className="row" style={{ gap: 8, marginTop: 4 }}>

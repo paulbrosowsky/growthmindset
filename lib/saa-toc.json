@@ -1,0 +1,596 @@
+[
+{
+"title": "Standardvorgehen bei invasiven Maßnahmen",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 20
+},
+{
+"title": "i.v.-Zugang",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 21
+},
+{
+"title": "i.o.-Zugang (EZ-IO, Cook, BIG)",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 22
+},
+{
+"title": "Extraglottischer Atemweg",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 23
+},
+{
+"title": "Extraglottischer Atemweg (LTS-D)",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 24
+},
+{
+"title": "Extraglottischer Atemweg (LMA 2. Gen.)",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 25
+},
+{
+"title": "Extraglottischer Atemweg (i-gel)",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 26
+},
+{
+"title": "Laryngoskopie / Magillzange",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 27
+},
+{
+"title": "Nichtinvasives CPAP / NIV",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 28
+},
+{
+"title": "Tourniquet / pneumatische Blutsperre",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 29
+},
+{
+"title": "Beckenschlinge",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 30
+},
+{
+"title": "Achsengerechte Immobilisation / Extension",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 31
+},
+{
+"title": "Thoraxentlastungspunktion",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 32
+},
+{
+"title": "Manuelle Defibrillation",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 33
+},
+{
+"title": "Kardioversion (Tachykardie mit Bewusstlosigkeit)",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 34
+},
+{
+"title": "Externe Schrittmacheranlage",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 35
+},
+{
+"title": "Endobronchiales Absaugen",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 36
+},
+{
+"title": "i.m.-Injektion",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 37
+},
+{
+"title": "Intranasale Gabe",
+"kind": "SAA",
+"group": "Invasive Maßnahmen",
+"page": 38
+},
+{
+"title": "Erläuterungen Medikamentengabe",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 40
+},
+{
+"title": "Standardvorgehen bei Medikamentengabe",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 41
+},
+{
+"title": "Notfallkarte Opioid Überdosierung",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 42
+},
+{
+"title": "Acetylsalicylsäure",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 43
+},
+{
+"title": "Amiodaron",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 44
+},
+{
+"title": "Atropin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 45
+},
+{
+"title": "Butylscopolamin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 46
+},
+{
+"title": "Dimenhydrinat",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 47
+},
+{
+"title": "Dimetinden",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 48
+},
+{
+"title": "Epinephrin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 49
+},
+{
+"title": "Esketamin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 50
+},
+{
+"title": "Fentanyl",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 51
+},
+{
+"title": "Furosemid",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 52
+},
+{
+"title": "Glucagon",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 53
+},
+{
+"title": "Glucose",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 54
+},
+{
+"title": "Glyceroltrinitrat",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 55
+},
+{
+"title": "Heparin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 56
+},
+{
+"title": "Ibuprofen",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 57
+},
+{
+"title": "Ipratropiumbromid",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 58
+},
+{
+"title": "Lidocain",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 59
+},
+{
+"title": "Metoprolol",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 60
+},
+{
+"title": "Midazolam",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 61
+},
+{
+"title": "Morphin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 62
+},
+{
+"title": "Nalbuphin",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 63
+},
+{
+"title": "Naloxon",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 64
+},
+{
+"title": "Paracetamol",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 65
+},
+{
+"title": "Prednisolon",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 66
+},
+{
+"title": "Salbutamol",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 67
+},
+{
+"title": "Sauerstoff",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 68
+},
+{
+"title": "Tranexamsäure",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 69
+},
+{
+"title": "Urapidil",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 70
+},
+{
+"title": "Vollelektrolytlösung (VEL)",
+"kind": "SAA",
+"group": "Medikamente",
+"page": 71
+},
+{
+"title": "Basismaßnahmen",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 73
+},
+{
+"title": "<c>ABCDE – Herangehensweise",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 75
+},
+{
+"title": "<c>ABCDE – Instabilitäten",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 76
+},
+{
+"title": "Beurteilung der Bewusstseinslage „WASB“ und GCS (Kinder / Erwachsene)",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 77
+},
+{
+"title": "Erfassung der Situation – Abfrageschema „SAMPLER“",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 78
+},
+{
+"title": "Erfassung der akuten Symptomatik – Abfrageschema „OPQRST“",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 79
+},
+{
+"title": "Atemwegsmanagement",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 80
+},
+{
+"title": "Handreichung Patientenanmeldung",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 82
+},
+{
+"title": "Handreichung Übergabe - SINNHAFT",
+"kind": "BPR",
+"group": "Herangehensweise",
+"page": 83
+},
+{
+"title": "Reanimation Erwachsene – ALS",
+"kind": "BPR",
+"group": "Kreislaufstillstand",
+"page": 85
+},
+{
+"title": "Reanimation Kinder – PLS",
+"kind": "BPR",
+"group": "Kreislaufstillstand",
+"page": 87
+},
+{
+"title": "Erstversorgung Neugeborener",
+"kind": "BPR",
+"group": "Kreislaufstillstand",
+"page": 89
+},
+{
+"title": "Reanimation Neugeborene – NLS",
+"kind": "BPR",
+"group": "Kreislaufstillstand",
+"page": 91
+},
+{
+"title": "Checkliste Postreanimationstherapie – Post-ROSC",
+"kind": "BPR",
+"group": "Kreislaufstillstand",
+"page": 93
+},
+{
+"title": "Dyspnoe",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 96
+},
+{
+"title": "Kritische Blutung",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 98
+},
+{
+"title": "Kurzzeitige Bewusstlosigkeit",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 100
+},
+{
+"title": "Nichttraumatischer Brustschmerz",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 102
+},
+{
+"title": "Schmerzen",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 104
+},
+{
+"title": "Schock",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 106
+},
+{
+"title": "Zentrales neurologisches Defizit",
+"kind": "BPR",
+"group": "Leitsymptome",
+"page": 108
+},
+{
+"title": "A-Problem bei Fremdkörperaspiration",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 111
+},
+{
+"title": "A-Problem beim Erwachsenen",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 113
+},
+{
+"title": "Akutes Aortensyndrom",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 114
+},
+{
+"title": "Akutes Koronarsyndrom (ACS)",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 116
+},
+{
+"title": "Anaphylaxie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 118
+},
+{
+"title": "Arterieller Verschluss",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 120
+},
+{
+"title": "Atemnot durch verlegtes Tracheostoma",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 121
+},
+{
+"title": "Bronchialobstruktion",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 123
+},
+{
+"title": "Dehydratation",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 125
+},
+{
+"title": "Geburtsbegleitung (ungeplant, außerklinisch)",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 127
+},
+{
+"title": "Hyperglykämie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 129
+},
+{
+"title": "Hypertensiver Notfall",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 131
+},
+{
+"title": "Hypoglykämie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 133
+},
+{
+"title": "Hypothermie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 135
+},
+{
+"title": "Instabile Bradykardie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 137
+},
+{
+"title": "Instabile Tachykardie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 139
+},
+{
+"title": "Intoxikation",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 141
+},
+{
+"title": "Kardiales Lungenödem",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 143
+},
+{
+"title": "Krampfanfall Erwachsene",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 145
+},
+{
+"title": "Krampfanfall Kind",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 147
+},
+{
+"title": "Lungenarterienembolie",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 149
+},
+{
+"title": "Obstruktion der oberen Atemwege Säugling / Kleinkind",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 151
+},
+{
+"title": "Polytrauma",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 153
+},
+{
+"title": "Schlaganfall",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 155
+},
+{
+"title": "Sepsis",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 157
+},
+{
+"title": "Stromunfall",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 159
+},
+{
+"title": "Thermische Verletzung",
+"kind": "BPR",
+"group": "Krankheitsbilder",
+"page": 161
+}
+]

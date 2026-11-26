@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
 import { fallback, type OnboardOut } from "@/lib/fallbacks";
-import { findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
+import { saaExcerpt } from "@/lib/saaServer";
+import { findChallenge, findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
       }
       case "slides": {
         const out = await ask<ReturnType<typeof fallback.slides>>(
-          `${ctx}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit klarem Bogen passend zum Anlass. Bei einer Fallvorstellung: Einsatzanlass und Einstiegsbild, Lage und Ersteindruck, Versorgung (z. B. nach cABCDE), was gut lief und was nicht, Lernpunkte und Fragen an die Runde. Keine echten Patientendaten, alles anonymisiert. title max. 32 Zeichen, bullets: genau 3 Stichpunkte mit je max. 30 Zeichen, note: Sprechernotiz in 1 kurzen Satz (max. 14 Wörter), die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Werte oder Medikamentendosen, nutze Platzhalter wie „Vitalwert X“.`,
+          `${ctx}\n\n${saaExcerpt({ text: payload.topic, maxChars: 5000 })}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit klarem Bogen passend zum Anlass. Bei einer Fallvorstellung: Einsatzanlass und Einstiegsbild, Lage und Ersteindruck, Versorgung (z. B. nach cABCDE), was gut lief und was nicht, Lernpunkte und Fragen an die Runde. Keine echten Patientendaten, alles anonymisiert. title max. 32 Zeichen, bullets: genau 3 Stichpunkte mit je max. 30 Zeichen, note: Sprechernotiz in 1 kurzen Satz (max. 14 Wörter), die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Werte oder Medikamentendosen, nutze Platzhalter wie „Vitalwert X“.`,
           obj({ slides: { type: "array", items: obj({ title: str, bullets: strArr, note: str }) } }),
           { maxTokens: 3000 },
         );
@@ -211,8 +212,12 @@ export async function POST(req: NextRequest) {
       }
       case "chat": {
         const history: { from: string; text: string }[] = payload.history || [];
+        // Fachliche Grundlage: passende Seiten aus SAA und BPR 2025 (Challenge-Verweise, Begriffe im Chat).
+        const recent = [payload.text, ...history.slice(-4).map((h) => h.text)].join(" ");
+        const chal = findChallenge(recent);
+        const saa = saaExcerpt({ refs: chal?.refs, text: recent, maxChars: 8000 });
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Jobprofil und Kompetenzlücken, Fortbildungen und Pflichtschulungen des Kreisverbands oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
+          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\n${chal ? `Es geht um die Challenge „${chal.title}“ (${chal.kind}): ${chal.text}${/wissenscheck/i.test(chal.title) ? " Stell genau eine Frage pro Nachricht, warte die Antwort ab, gib kurz Rückmeldung mit Quelle und stell dann die nächste." : ""}\n` : ""}${saa ? `\n${saa}\n\nFachliche Aussagen nur auf Basis dieser Auszüge und mit Quelle (z. B. „BPR Polytrauma, S. 153“). Keine Dosierungen aus dem Gedächtnis.\n` : ""}\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Jobprofil und Kompetenzlücken, Fortbildungen und Pflichtschulungen des Kreisverbands oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
           obj({ text: str }),
           { maxTokens: 1500 },
         );

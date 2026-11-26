@@ -1,6 +1,7 @@
 // Demo-Unternehmenskontext: DRK-Kreisverband Musterstadt e. V. (fiktiv, siehe docs/DRK_Personalentwicklung_Demodaten.md).
 // In einem echten Betrieb pflegt die Personalentwicklung diese Daten.
 import type { AppState, Area, Rec, Skill } from "./types";
+import { SAA_SOURCE, SAA_TOC } from "./saa";
 
 /** Kompetenzstufen des Kreisverbands (1 bis 4). Teilkompetenzen nutzen dieselbe Skala, 0 = noch nicht bewertet. */
 export const MAX_LEVEL = 4;
@@ -334,11 +335,12 @@ export const mandatoryFor = (role?: string) => {
 /* ---------- Persönliche Ziele: Lernpfad mit Challenges ---------- */
 
 export type ChallengeKind = "Lernen" | "Üben" | "Anwenden" | "Reflexion";
-export type Challenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string };
+/** refs: Titel aus den SAA und BPR 2025, auf die sich die Challenge stützt (siehe lib/saa.ts). */
+export type Challenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string; refs?: string[] };
 
 export const CHALLENGE_XP: Record<ChallengeKind, number> = { Lernen: 30, Üben: 60, Anwenden: 80, Reflexion: 40 };
 
-const ch = (id: string, area: string, title: string, kind: ChallengeKind, min: number, text: string): Challenge => ({ id, area, title, kind, min, text });
+const ch = (id: string, area: string, title: string, kind: ChallengeKind, min: number, text: string, refs?: string[]): Challenge => ({ id, area, title, kind, min, text, refs });
 
 export type PathKey = "praes" | "trauma" | "resi";
 
@@ -347,12 +349,12 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
   praes: {
     title: "",
     challenges: [
-      ch("p1", "fach", "Fall nach cABCDE aufbereiten", "Lernen", 15, "Ordne den Einsatz entlang cABCDE, bevor du Folien baust."),
+      ch("p1", "fach", "Fall nach <c>ABCDE aufbereiten", "Lernen", 15, "Ordne den Einsatz entlang der <c>ABCDE-Herangehensweise, bevor du Folien baust.", ["<c>ABCDE – Herangehensweise"]),
       ch("p2", "komm", "Einstieg in 30 Sekunden", "Üben", 10, "Ein Satz, der die Runde sofort an die Einsatzstelle holt."),
       ch("p3", "meth", "Einsatzprotokoll als Quelle", "Lernen", 15, "Zeitstrahl und Befunde aus der Doku, vollständig anonymisiert."),
       ch("p4", "komm", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass Kompass Feedback geben."),
       ch("p5", "komm", "Souverän mit Rückfragen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
-      ch("p6", "fach", "Leitlinienbezug herstellen", "Anwenden", 20, "Zeig, wo du dich an der Leitlinie orientiert hast und warum."),
+      ch("p6", "fach", "Bezug zum BPR Polytrauma", "Anwenden", 20, "Zeig, wo ihr nach dem Behandlungspfad vorgegangen seid und wo bewusst nicht.", ["Polytrauma"]),
       ch("p7", "komm", "Stimme und Pausen", "Üben", 10, "Pausen wirken sicherer als schnelle Sätze."),
       ch("p8", "meth", "Fall in der Fallbesprechung vorstellen", "Anwenden", 30, "Der echte Termin (F12). Du bist vorbereitet."),
       ch("p9", "komm", "Feedback einholen", "Anwenden", 15, "Frag zwei Kolleg/innen, was hängen blieb."),
@@ -360,17 +362,17 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
     ],
   },
   trauma: {
-    title: "Traumaversorgung sicher nach cABCDE",
+    title: "Traumaversorgung sicher nach SAA und BPR",
     challenges: [
-      ch("t1", "fach", "cABCDE-Schema auffrischen", "Lernen", 15, "Die Reihenfolge, die in jedem Traumaeinsatz trägt."),
-      ch("t2", "fach", "Blutungskontrolle am Phantom", "Üben", 15, "Tourniquet und Beckenschlinge, bis jeder Handgriff sitzt."),
-      ch("t3", "meth", "Fallbeispiel durchspielen", "Üben", 20, "Kompass spielt einen Einsatz mit dir durch, du entscheidest Schritt für Schritt."),
-      ch("t4", "komm", "Closed-Loop im Team", "Üben", 10, "Ansage, Wiederholen, Bestätigen: klare Kommunikation unter Druck."),
-      ch("t5", "fach", "Für F02 anmelden", "Anwenden", 10, "Traumamanagement Advanced, 2 Tage. Sprich den Termin mit der Wachenleitung ab."),
-      ch("t6", "meth", "Debriefing nach dem Einsatz", "Reflexion", 10, "Drei Fragen mit der Crew: Was lief gut, was nicht, was ändern wir?"),
-      ch("t7", "komm", "Übergabe nach SINNHAFT", "Üben", 10, "Strukturierte Übergabe im Schockraum, in unter einer Minute."),
-      ch("t8", "fach", "Fall in die Fallbesprechung einbringen", "Anwenden", 30, "Teile einen Traumaeinsatz in der Fallbesprechung (F12)."),
-      ch("t9", "meth", "Nächsten Traumaeinsatz bewusst führen", "Anwenden", 30, "Nutze das Schema und achte auf deine Ansagen."),
+      ch("t1", "fach", "<c>ABCDE-Herangehensweise auffrischen", "Lernen", 15, "Die Reihenfolge aus dem BPR, die in jedem Traumaeinsatz trägt.", ["<c>ABCDE – Herangehensweise"]),
+      ch("t2", "fach", "Kritische Blutung stoppen", "Üben", 15, "Kompression bis Tourniquet am Phantom, entlang BPR und SAA.", ["Kritische Blutung", "Tourniquet"]),
+      ch("t3", "fach", "Beckenschlinge anlegen", "Üben", 15, "Indikation und sichere Anlage nach SAA, mit einer Kollegin üben.", ["Beckenschlinge"]),
+      ch("t4", "meth", "Wissenscheck BPR Polytrauma", "Lernen", 10, "Kompass stellt dir fünf Fragen zum Behandlungspfad, eine nach der anderen.", ["Polytrauma"]),
+      ch("t5", "komm", "Closed-Loop im Team", "Üben", 10, "Ansage, Wiederholen, Bestätigen: klare Kommunikation unter Druck."),
+      ch("t6", "fach", "Für F02 anmelden", "Anwenden", 10, "Traumamanagement Advanced, 2 Tage. Sprich den Termin mit der Wachenleitung ab."),
+      ch("t7", "komm", "Übergabe nach SINNHAFT", "Üben", 10, "Strukturierte Übergabe im Schockraum nach der Handreichung, in unter einer Minute.", ["SINNHAFT"]),
+      ch("t8", "meth", "Fallbeispiel Polytrauma durchspielen", "Üben", 20, "Kompass spielt einen Einsatz mit dir durch, du entscheidest Schritt für Schritt.", ["Polytrauma", "Schock"]),
+      ch("t9", "meth", "Debriefing nach dem Einsatz", "Reflexion", 10, "Drei Fragen mit der Crew: Was lief gut, was nicht, was ändern wir?"),
       ch("t10", "selbst", "Reflexion: Was sitzt jetzt?", "Reflexion", 10, "Wo stehst du in der Patientenversorgung, was fehlt noch?"),
     ],
   },
@@ -390,6 +392,12 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
     ],
   },
 };
+
+/** Challenge zu einem Titel (z. B. aus „Hilf mir, die Challenge „…“ vorzubereiten“). */
+export const findChallenge = (title: string) =>
+  Object.values(GOAL_PATHS)
+    .flatMap((p) => p.challenges)
+    .find((c) => title.includes(c.title));
 
 export const goalPathKey = (goal?: string): PathKey => {
   const g = goal || "";
@@ -415,7 +423,8 @@ export const YEAR_GOALS: { id: string; title: string; meta: string; color: strin
 
 export const SOPS: { id: string; title: string; version: string; changed: string; summary: string; readDefault?: boolean }[] = [
   { id: "hygiene", title: "Hygieneplan Rettungswache", version: "4.1", changed: "20. Nov.", summary: "Neu: Nach jedem Infektionstransport wird die Desinfektion von Trage und Patientenraum auf der Checkliste im Fahrzeug abgezeichnet." },
-  { id: "uebergabe", title: "Patientenübergabe in der Notaufnahme", version: "2.0", changed: "2. Okt.", summary: "Übergaben folgen jetzt einheitlich dem SINNHAFT-Schema, das Protokoll geht digital vorab an die Klinik.", readDefault: true },
+  { id: "saa2025", title: "SAA und BPR 2025", version: "2025", changed: "1. Nov.", summary: "Ab sofort Grundlage für Einsätze und Fortbildung im Kreisverband: Standardarbeitsanweisungen für invasive Maßnahmen und Medikamente sowie die Behandlungspfade der ÄLRD (Stand Juli 2025). Für deinen Lernpfad wichtig: <c>ABCDE (S. 75), Kritische Blutung (S. 98), Polytrauma (S. 153), Übergabe nach SINNHAFT (S. 83)." },
+  { id: "uebergabe", title: "Patientenübergabe in der Notaufnahme", version: "2.0", changed: "2. Okt.", summary: "Übergaben folgen einheitlich der Handreichung SINNHAFT aus den BPR (S. 83), das Protokoll geht digital vorab an die Klinik.", readDefault: true },
 ];
 
 /** Feste Demo-Termine; Tage ab Start der Demo, Uhrzeit. */
@@ -452,7 +461,7 @@ export function initialAreas(): Area[] {
             ["pharma", "Medikamente und Dosierungen", 4],
             ["krankheit", "Krankheitsbilder erkennen", 3],
           ],
-          [r("n1", "Intern", "F12 Notfallmedizinische Fallbesprechungen", "1 Tag")],
+          [r("n1", "Intern", "F12 Notfallmedizinische Fallbesprechungen", "1 Tag"), r("n2", "Ressource", "SAA und BPR 2025 der ÄLRD", "Nachschlagen")],
         ),
         s(
           "patient",
@@ -463,7 +472,11 @@ export function initialAreas(): Area[] {
             ["kinder", "Kindernotfälle", 3],
             ["invasiv", "Invasive Maßnahmen", 3],
           ],
-          [r("pv1", "Intern", "F02 Traumamanagement Advanced", "2 Tage"), r("pv2", "Üben", "Blutungskontrolle am Phantom", "15 min")],
+          [
+            r("pv1", "Intern", "F02 Traumamanagement Advanced", "2 Tage"),
+            r("pv2", "Üben", "Kritische Blutung stoppen am Phantom", "15 min"),
+            r("pv3", "Ressource", "BPR Polytrauma (SAA und BPR 2025, S. 153)", "10 min"),
+          ],
         ),
         s(
           "material",
@@ -728,5 +741,10 @@ export function knowledgeJSON(): string {
       skills: a.skills.map((sk) => ({ id: sk.id, name: sk.name, teilkompetenzen: Object.fromEntries(sk.subs.map((x) => [x.id, x.name])) })),
     })),
     team: TEAM.map((t) => `${t.name} (${t.role})`),
+    saa_bpr: {
+      quelle: SAA_SOURCE,
+      nutzung: "Fachliche Grundlage für Weiterbildung, Challenges und Wissenschecks im Rettungsdienst. Auszüge werden bei Bedarf mitgeschickt.",
+      verzeichnis: SAA_TOC.map((e) => `${e.kind} ${e.title} S.${e.page}`),
+    },
   });
 }
