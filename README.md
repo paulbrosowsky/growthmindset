@@ -34,8 +34,8 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 ## Demo-Ablauf
 
 1. Username wählen (kein Passwort), kurzes Onboarding im Chat.
-2. Lernreise ansehen: Präsentieren steht bei 52 %.
-3. „Hey, ich muss morgen präsentieren“ → Thema → drei Vorschläge → Option 3 → „Slides vorbereiten“.
+2. Demo-Persona: Login `max.mueller`, Rolle „Notfallsanitäter“, dann die vorgeschlagenen Antworten antippen. Unter Ziele: Lernziel Fallvorstellung, Stellenprofil mit Lücken (Patientenversorgung, Belastbarkeit) und Fortbildungsvorschlag, Pflichtschulung P03 abgelaufen.
+3. „Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen“ → drei Vorschläge → Option 3 → „Slides vorbereiten“.
 4. Generalprobe aufnehmen (Kamera, Upload oder Beispiel-Analyse) → Feedback, Fortschritt steigt.
 5. Termin nennen, z. B. „Morgen um 10:00“.
 6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von Kompass.
@@ -45,7 +45,7 @@ In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für
 
 ## Aufbau
 
-- `lib/knowledge.ts`: generierter Firmenkontext (Neckartal Systemtechnik GmbH), Kompetenzmodell, Katalog, Lernmethoden
+- `lib/knowledge.ts`: Unternehmenskontext DRK-Kreisverband Musterstadt e. V. (fiktiv, Quelle `docs/DRK_Personalentwicklung_Demodaten.md`): Kompetenzmodell mit Stufen 1 bis 4, 9 Jobprofile mit Soll-Stufen, Fortbildungen F01 bis F15, Pflichtschulungen P01 bis P05, Demo-Persona Max Müller. Geht als JSON in den System-Prompt (`knowledgeJSON`).
 - `lib/claude.ts`: Claude-Aufrufe mit Structured Outputs, Prompt Caching und serverseitigem Fallback
 - `app/api/ai/route.ts`: die KI-Aufgaben (Begrüßung, Vorschläge, Slides, Videoanalyse, Reflexion, Kollegen-Feedback, Lernpfad-Update, freier Chat)
 - `lib/fallbacks.ts`: Skript-Antworten, wenn die KI nicht verfügbar ist
