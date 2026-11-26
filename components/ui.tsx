@@ -90,6 +90,13 @@ const PATHS: Record<string, ReactNode> = {
   down: <path d="M6 9l6 6 6-6" />,
   ext: <path d="M7 17L17 7M9 7h8v8" />,
   restart: <path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4.5h4.5" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  share: <path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />,
 };
 
 export function Icon({ name, size = 18, style, className }: { name: string; size?: number; style?: CSSProperties; className?: string }) {

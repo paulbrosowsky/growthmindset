@@ -43,6 +43,8 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von Kompass.
 7. Reflexion, Kollegen-Feedback anfragen (simuliert), Lernpfad wird erweitert, Level-Up.
 
+8. **Unternehmenssicht**: Nach einer „Anwenden“-Challenge oder dem ganzen Lernpfad fragt Kompass „Erfolg teilen?“ (in der Demo-Steuerung auch direkt über „Teilen“). Max wählt, was die Wachenleitung sieht, Coach-Inhalte bleiben privat. Danach `/dashboard` öffnen (Demo-Steuerung → „Dashboard“): Der Erfolg erscheint bei der Wachenleitung. Oben rechts bzw. mit den Tasten 1 und 2 zwischen **Wachenleitung** und **Personalabteilung** (`/dashboard?view=hr`, nur zusammengefasste Werte) umschalten. Alle Kennzahlen dort sind Dummy-Daten (`lib/dashboardDemo.ts`), nur die geteilten Erfolge kommen live aus der App.
+
 In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für die Jury und **Profil zurücksetzen**.
 
 ## Aufbau
@@ -54,6 +56,8 @@ In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für
 - `lib/realtime.ts`, `app/api/realtime/route.ts`, `lib/voiceClient.ts`: Sprachgespräch über die OpenAI Realtime API
 - `lib/fallbacks.ts`: Skript-Antworten, wenn die KI nicht verfügbar ist
 - `components/Coach.tsx`: Handy-App mit Navigation (Coach, Reise, Team, Erfolge) und Demo-Ablauf
+- `components/ShareSheet.tsx`, `lib/share.ts`: „Erfolg teilen“ mit Empfänger, Kompetenz und Fortbildung aus den Unternehmensdaten; gespeichert in `AppState.shared`
+- `app/dashboard/`, `components/dashboard/Dashboard.tsx`: Unternehmenssicht (shadcn-Dashboard) für Wachenleitung und Personalabteilung; `app/api/shared/route.ts` liefert nur die freigegebenen Erfolge
 - `components/views.tsx`: Reise mit Kompetenzbereichen, Team, Erfolge, Demo-Steuerung; `components/Cards.tsx`: Karten im Chat
 - UI: Tailwind CSS 4 mit [shadcn/ui](https://ui.shadcn.com) (`components/shadcn/`), Theme „Graphit & Gelb“ in `app/globals.css`; Animationen mit [Motion](https://motion.dev)
 
