@@ -146,16 +146,26 @@ export function initialAreas(): Area[] {
           ],
           [r("w1", "Intern", "Schulung „Wärmepumpe kompakt“", "4 Stunden")],
         ),
-        s("markt", "Energiemarkt", [
-          ["mfoer", "Förderlandschaft", 4],
-          ["mwett", "Wettbewerb", 3],
-          ["mtrend", "Trends", 3],
-        ]),
-        s("pm", "Produktmanagement", [
-          ["disc", "Product Discovery", 3],
-          ["road", "Roadmapping", 3],
-          ["kpi", "Kennzahlen", 2],
-        ]),
+        s(
+          "markt",
+          "Energiemarkt",
+          [
+            ["mfoer", "Förderlandschaft", 4],
+            ["mwett", "Wettbewerb", 3],
+            ["mtrend", "Trends", 3],
+          ],
+          [r("e1", "Ressource", "Marktreport „Wärmepumpen 2027“", "20 min")],
+        ),
+        s(
+          "pm",
+          "Produktmanagement",
+          [
+            ["disc", "Product Discovery", 3],
+            ["road", "Roadmapping", 3],
+            ["kpi", "Kennzahlen", 2],
+          ],
+          [r("pm1", "Intern", "Workshop „Produktkennzahlen und OKRs“", "Neckartal Academy · 1 Tag")],
+        ),
       ],
     },
     {
@@ -163,11 +173,16 @@ export function initialAreas(): Area[] {
       name: "Methoden",
       color: "#7C9CD6",
       skills: [
-        s("agil", "Agiles Arbeiten", [
-          ["scrum", "Scrum", 4],
-          ["kanban", "Kanban", 3],
-          ["retro", "Retrospektiven", 3],
-        ]),
+        s(
+          "agil",
+          "Agiles Arbeiten",
+          [
+            ["scrum", "Scrum", 4],
+            ["kanban", "Kanban", 3],
+            ["retro", "Retrospektiven", 3],
+          ],
+          [r("a1", "Ressource", "Leitfaden „Retrospektiven, die wirken“", "15 min")],
+        ),
         s(
           "daten",
           "Datenanalyse",
@@ -178,11 +193,16 @@ export function initialAreas(): Area[] {
           ],
           [r("d1", "Intern", "Lernpfad „SQL für Produktleute“", "6 × 1 Stunde")],
         ),
-        s("ux", "Nutzerforschung", [
-          ["interv", "Interviews", 3],
-          ["tests", "Usability-Tests", 2],
-          ["synth", "Synthese", 2],
-        ]),
+        s(
+          "ux",
+          "Nutzerforschung",
+          [
+            ["interv", "Interviews", 3],
+            ["tests", "Usability-Tests", 2],
+            ["synth", "Synthese", 2],
+          ],
+          [r("u1", "Intern", "Hospitation bei den Usability-Tests im UX-Team", "2 Stunden")],
+        ),
       ],
     },
     {
@@ -190,11 +210,16 @@ export function initialAreas(): Area[] {
       name: "Selbstführung",
       color: "#E3907D",
       skills: [
-        s("zeit", "Zeitmanagement", [
-          ["prio", "Prioritäten setzen", 3],
-          ["fokus", "Fokuszeiten", 3],
-          ["nein", "Nein sagen", 2],
-        ]),
+        s(
+          "zeit",
+          "Zeitmanagement",
+          [
+            ["prio", "Prioritäten setzen", 3],
+            ["fokus", "Fokuszeiten", 3],
+            ["nein", "Nein sagen", 2],
+          ],
+          [r("z1", "Ressource", "Methode „Eisenhower-Matrix“ mit Vorlage", "10 min")],
+        ),
         s(
           "resi",
           "Resilienz",
@@ -205,11 +230,16 @@ export function initialAreas(): Area[] {
           ],
           [r("r1", "Intern", "Workshop „Resilienz im Arbeitsalltag“", "3 Stunden · mit der Betriebskrankenkasse")],
         ),
-        s("lernen", "Lernen lernen", [
-          ["ziele", "Lernziele setzen", 2],
-          ["reflex", "Reflektieren", 2],
-          ["routine", "Lernroutine", 2],
-        ]),
+        s(
+          "lernen",
+          "Lernen lernen",
+          [
+            ["ziele", "Lernziele setzen", 2],
+            ["reflex", "Reflektieren", 2],
+            ["routine", "Lernroutine", 2],
+          ],
+          [r("l1", "Ressource", "Vorlage „Wochenreflexion in 5 Minuten“", "5 min")],
+        ),
       ],
     },
   ];

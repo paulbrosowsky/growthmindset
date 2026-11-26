@@ -194,7 +194,7 @@ export function AreaView({
                 {s.name.split(" ").map((w, i) => (
                   <span key={i}>
                     {i > 0 && <br />}
-                    {w}
+                    {w.replace(/(management|analyse|führung)/i, "\u00AD$1")}
                   </span>
                 ))}
               </span>

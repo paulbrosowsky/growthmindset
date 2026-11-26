@@ -6,7 +6,7 @@ import { Button } from "@/components/shadcn/button";
 import { Icon } from "@/components/ui";
 import { Card } from "@/components/shadcn/card";
 import Coach from "@/components/Coach";
-import { initialState } from "@/lib/knowledge";
+import { initialAreas, initialState } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
 const KEY = "kompass-user";
@@ -36,7 +36,13 @@ export default function Home() {
       try {
         localStorage.setItem(KEY, u);
       } catch {}
-      setState((st.state as AppState) || initialState(u));
+      const loaded = st.state as AppState | null;
+      if (loaded) {
+        // Ältere Profile: fehlende Vorschläge aus den Standard-Inhalten ergänzen.
+        const base = initialAreas();
+        for (const a of loaded.areas) for (const sk of a.skills) if (!sk.recs?.length) sk.recs = base.flatMap((x) => x.skills).find((x) => x.id === sk.id)?.recs ?? [];
+      }
+      setState(loaded || initialState(u));
     } catch {
       setError("Server nicht erreichbar. Bitte später noch einmal versuchen.");
     } finally {
