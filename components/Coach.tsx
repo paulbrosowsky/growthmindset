@@ -21,18 +21,21 @@ type Tab = "coach" | "ziele" | "team";
 type Reise = { view: "home" | "kompetenzen" | "area" | "update" | "pfad" | "profil"; area: string; skill: string; from?: "home" | "kompetenzen" | "profil" };
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
-const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
+// Reihenfolge als Gesprächsbogen: heute (Rolle, Weg, Spaß/Meiden) → Zukunft (3 Jahre) →
+// was dafür zu lernen ist → erster Meilenstein in 4 Wochen → wie und wann gelernt wird.
+// `q` ist die Rückfall-Formulierung; live formuliert Kompass jede Frage passend zur vorigen Antwort.
+const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; topic: string; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
   // Wer?
-  { key: "role", q: "Welche Rolle hast du aktuell?", chips: ["Produktmanagerin, Wärmepumpen-App"], ph: "Rolle und Bereich" },
-  { key: "experience", q: "Welche beruflichen Stationen hattest du bisher?", chips: ["3 Jahre Agentur, seit 8 Monaten hier"] },
-  { key: "likes", q: "Was macht dir im Berufsalltag Spaß, und was meidest du eher?", chips: ["Datenanalysen mag ich, große Präsentationen meide ich."] },
+  { key: "role", topic: "aktuelle Rolle und Bereich", q: "Welche Rolle hast du aktuell?", chips: ["Produktmanagerin, Wärmepumpen-App"], ph: "Rolle und Bereich" },
+  { key: "experience", topic: "bisherige berufliche Stationen, Weg in die Rolle", q: "Wie bist du dahin gekommen, welche Stationen hattest du bisher?", chips: ["3 Jahre Agentur, seit 8 Monaten hier"] },
+  { key: "likes", topic: "was im Berufsalltag Spaß macht und was die Person meidet", q: "Was macht dir im Alltag Spaß, und was meidest du eher?", chips: ["Datenanalysen mag ich, große Präsentationen meide ich."] },
   // Was?
-  { key: "learn", q: "Was möchtest du lernen?", chips: ["Souverän präsentieren und mit Daten überzeugen"] },
-  { key: "vision", q: "Wo siehst du dich in 3 Jahren?", chips: ["Ein eigenes Produktteam leiten"] },
-  { key: "goal", q: "Und was willst du in den nächsten 4 Wochen erreichen?", chips: ["Die Q4-Roadmap sicher vorstellen"] },
+  { key: "vision", topic: "wo die Person sich in 3 Jahren sieht", q: "Lass uns nach vorn schauen: Wo siehst du dich in 3 Jahren?", chips: ["Ein eigenes Produktteam leiten"] },
+  { key: "learn", topic: "was die Person dafür lernen möchte", q: "Was möchtest du dafür lernen?", chips: ["Souverän präsentieren und mit Daten überzeugen"] },
+  { key: "goal", topic: "was davon sie in den nächsten 4 Wochen erreichen will", q: "Und was davon willst du in den nächsten 4 Wochen schaffen?", chips: ["Die Q4-Roadmap sicher vorstellen"] },
   // Wie?
-  { key: "preference", q: "Wie lernst du am besten?", chips: ["Praxis und Üben", "Videos", "Lesen", "Austausch"], multi: true },
-  { key: "time", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["20 Minuten nach dem Daily", "Auf dem Weg zur Arbeit"] },
+  { key: "preference", topic: "wie die Person am besten lernt (Auswahl folgt)", q: "Wie lernst du am besten?", chips: ["Praxis und Üben", "Videos", "Lesen", "Austausch"], multi: true },
+  { key: "time", topic: "wann und wo Lernen in den Alltag passt", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["20 Minuten nach dem Daily", "Auf dem Weg zur Arbeit"] },
 ];
 const OB_TOTAL = OB_QUESTIONS.length;
 const MAX_FOLLOWUPS = 2;
@@ -293,15 +296,18 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     // erscheinen nur, solange alle Antworten bisher genau die Demo-Antworten waren.
     let demoPath = true;
     let suggested: string[] = [];
+    let phrased = "";
     for (let i = 0; i < OB_QUESTIONS.length; i++) {
       const q = OB_QUESTIONS[i];
+      const next = OB_QUESTIONS[i + 1];
+      const asked = phrased || q.q;
       setObStep(i + 1);
-      await say(lead ? `${lead} ${q.q}` : q.q, lead ? 300 : 650);
+      await say(lead ? `${lead} ${asked}` : asked, lead ? 300 : 650);
       const chips = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
       let answer = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
       if (!q.multi && !q.chips.includes(answer)) demoPath = false;
-      const base = { step: i + 1, question: q.q, nextQuestion: OB_QUESTIONS[i + 1]?.q, nextIsChoice: Boolean(OB_QUESTIONS[i + 1]?.multi), name, answersSoFar: answers };
-      let r = await ai("onboard", { ...base, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
+      const base = { step: i + 1, nextTopic: next?.topic, nextQuestion: next?.q, nextIsChoice: Boolean(next?.multi), name, answersSoFar: answers };
+      let r = await ai("onboard", { ...base, question: asked, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
       if (r.followUp && left > 0) {
         left--;
         await say(`${r.reaction} ${r.followUp}`.trim(), 200);
@@ -315,6 +321,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       }
       answers[q.key] = answer;
       lead = r.reaction;
+      phrased = (r.nextQuestion || "").trim();
+      if (phrased && !phrased.endsWith("?")) phrased = "";
+      if (next?.key === "time" && phrased && !/letzte/i.test(phrased)) phrased = `Letzte Frage: ${phrased.charAt(0).toLowerCase()}${phrased.slice(1)}`;
       suggested = (r.suggestions || []).filter((x) => x && x.length <= 60);
     }
 

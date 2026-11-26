@@ -5,7 +5,7 @@ export type WelcomeOut = { summary: string; focus: string[]; firstStep: string }
 export type PrepOut = { text: string; options: { kind: "video" | "read" | "practice"; title: string; detail: string }[] };
 export type SlidesOut = { slides: Slide[] };
 export type VideoOut = { good: string[]; improve: string[]; tip: string; levelChanges: LevelChange[] };
-export type OnboardOut = { reaction: string; followUp: string; suggestions?: string[] };
+export type OnboardOut = { reaction: string; followUp: string; nextQuestion?: string; suggestions?: string[] };
 export type ProfileOut = { intro: string; wer: string[]; was: string[]; wie: string[]; goal: string };
 export type TextOut = { text: string };
 export type PeersOut = { feedback: PeerFeedback[] };
@@ -17,7 +17,7 @@ export type SynthOut = {
 };
 
 // Neutral, damit sie zu jeder Antwort passen (im Live-Modus formuliert Claude sie individuell).
-const REACTIONS = ["Danke.", "Danke, das hilft mir.", "Danke für deine Offenheit.", "Verstanden.", "Danke.", "Gut, daran arbeiten wir.", "Gut zu wissen.", "Danke."];
+const REACTIONS = ["Danke.", "Danke, das hilft mir.", "Danke für deine Offenheit.", "Ein klares Bild.", "Verstanden.", "Gut, daran arbeiten wir.", "Gut zu wissen.", "Danke."];
 
 /** Antwort in kurze Stichworte zerlegen (Nachfrage-Antworten in Klammern fallen weg). */
 const clauses = (t: string | undefined, maxWords = 6) =>
@@ -44,7 +44,7 @@ export const fallback = {
     return {
       intro: "So habe ich dich verstanden:",
       wer: [clauses(a.role)[0], clauses(a.experience)[0], ...clauses(a.likes)].filter(Boolean).slice(0, 4),
-      was: [clauses(a.learn)[0], clauses(a.vision)[0]].filter(Boolean),
+      was: [clauses(a.vision)[0], clauses(a.learn)[0]].filter(Boolean),
       wie: [...clauses(a.preference), ...clauses(a.time)].filter(Boolean).slice(0, 4),
       goal: `In 4 Wochen: ${goal || "sicher vor großen Runden präsentieren"}`,
     };
