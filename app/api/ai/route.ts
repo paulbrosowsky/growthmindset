@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
-import { fallback } from "@/lib/fallbacks";
+import { fallback, type OnboardOut } from "@/lib/fallbacks";
 import { findSkill, MANDATORY, MANDATORY_DONE_DEFAULT, roleFor, skillProgress } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
@@ -95,17 +95,23 @@ export async function POST(req: NextRequest) {
         return out ?? fallback.welcome(state.profile);
       }
       case "onboard": {
-        // Kennenlernen: kurze Reaktion auf die Antwort, optional eine individuelle Nachfrage.
+        // Kennenlernen: Reaktion auf die Antwort, optional eine Nachfrage, Vorschläge für die nächste Frage.
         const history: { from: string; text: string }[] = payload.history || [];
         const left: number = payload.followUpsLeft ?? 0;
         const isFollowUpAnswer = Boolean(payload.isFollowUpAnswer);
-        const out = await ask<{ reaction: string; followUp: string }>(
-          `Du lernst ${payload.name || "die Person"} gerade im Onboarding kennen, um gemeinsam ein Lernziel zu finden. Du stellst 8 Kernfragen nach Wer, Was und Wie.\nBisheriges Gespräch:\n${history.map((h) => `${h.from === "me" ? payload.name || "Person" : "Kompass"}: ${h.text}`).join("\n")}\n\nAktuelle Kernfrage: „${payload.question}“\nAntwort: „${payload.answer}“\n${payload.nextQuestion ? `Danach folgt die Kernfrage: „${payload.nextQuestion}“ (stellt die App selbst).` : "Das war die letzte Kernfrage, danach fasst du das Profil zusammen."}\n\nfollowUp: ${isFollowUpAnswer || left <= 0 ? "leer lassen, keine Nachfrage mehr." : `Meistens leer lassen. Nur wenn die Antwort für das Lernziel wirklich zu unklar ist oder etwas Zentrales andeutet (z. B. etwas, das die Person meidet), eine individuelle, offene Nachfrage, max. 14 Wörter. Noch ${left} Nachfrage(n) im ganzen Onboarding erlaubt, spare sie für das Wichtigste.`}\nreaction: 1 kurzer, persönlicher Satz, der konkret aufgreift, was gesagt wurde, max. 12 Wörter, keine Frage, kein Lob für Talent. Wiederhole nicht die nächste Kernfrage.`,
-          obj({ reaction: str, followUp: str }),
-          { maxTokens: 800 },
+        const who = payload.name || "die Person";
+        const known = Object.entries((payload.answersSoFar || {}) as Record<string, string>)
+          .filter(([k, v]) => k !== "name" && v)
+          .map(([k, v]) => `- ${k}: ${v}`)
+          .join("\n");
+        const out = await ask<OnboardOut>(
+          `Du lernst ${who} gerade im Onboarding kennen, um gemeinsam ein Lernziel zu finden. Die App stellt 8 feste Kernfragen nach Wer, Was und Wie.\n${known ? `Bisher bekannt:\n${known}\n` : ""}\nGesprächsverlauf (die letzte Nachricht ist die Antwort von ${who}):\n${history.map((h) => `${h.from === "me" ? who : "Kompass"}: ${h.text}`).join("\n")}\n\nDeine zuletzt gestellte Frage: „${payload.question}“\nAntwort von ${who}: „${payload.answer}“\n${payload.nextQuestion ? `Direkt nach deiner Reaktion stellt die App die nächste Kernfrage: „${payload.nextQuestion}“.` : "Das war die letzte Kernfrage, danach folgt die Zusammenfassung."}\n\nreaction: 1 kurzer Satz, der sich konkret auf genau diese Antwort bezieht (greif ein Detail daraus auf) und natürlich zur nächsten Frage überleitet. Max. 12 Wörter, keine Frage, keine Floskel wie „Spannend“, kein Lob für Talent, nichts erfinden, was nicht gesagt wurde. Bei einer sehr kurzen oder ausweichenden Antwort („weiß nicht“) neutral und ermutigend.\nfollowUp: ${isFollowUpAnswer || left <= 0 ? "leer lassen." : `Meistens leer lassen. Nur wenn die Antwort für das Lernziel wirklich zu unklar ist oder etwas Zentrales andeutet (z. B. etwas, das die Person meidet), eine individuelle, offene Nachfrage, max. 14 Wörter. Noch ${left} Nachfrage(n) im ganzen Onboarding erlaubt.`}\nsuggestions: ${payload.nextQuestion && !payload.nextIsChoice ? `0 bis 2 mögliche Antworten auf die nächste Kernfrage, so wie ${who} sie selbst tippen würde (Ich-Form oder Stichwort, max. 8 Wörter). Sie müssen zu Rolle, Stationen und allen bisherigen Antworten passen und dürfen ihnen nicht widersprechen. Nichts Erfundenes wie konkrete Firmen oder Zahlen, die nicht genannt wurden. Lieber leer als unpassend.` : "leer lassen."}`,
+          obj({ reaction: str, followUp: str, suggestions: strArr }),
+          { maxTokens: 1000 },
         );
         if (out) {
           if (isFollowUpAnswer || left <= 0) out.followUp = "";
+          if (!payload.nextQuestion || payload.nextIsChoice) out.suggestions = [];
           return out;
         }
         return fallback.onboard(payload.step, payload.answer || "", left, isFollowUpAnswer);

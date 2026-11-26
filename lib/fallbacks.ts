@@ -5,7 +5,7 @@ export type WelcomeOut = { summary: string; focus: string[]; firstStep: string }
 export type PrepOut = { text: string; options: { kind: "video" | "read" | "practice"; title: string; detail: string }[] };
 export type SlidesOut = { slides: Slide[] };
 export type VideoOut = { good: string[]; improve: string[]; tip: string; levelChanges: LevelChange[] };
-export type OnboardOut = { reaction: string; followUp: string };
+export type OnboardOut = { reaction: string; followUp: string; suggestions?: string[] };
 export type ProfileOut = { intro: string; wer: string[]; was: string[]; wie: string[]; goal: string };
 export type TextOut = { text: string };
 export type PeersOut = { feedback: PeerFeedback[] };
@@ -16,16 +16,8 @@ export type SynthOut = {
   memory: string[];
 };
 
-const REACTIONS = [
-  "Danke, das hilft mir.",
-  "Spannende Stationen.",
-  "Danke für deine Offenheit.",
-  "Gut, dass du das so klar sagst.",
-  "Ein gutes Ziel, darauf arbeiten wir hin.",
-  "Das macht es greifbar.",
-  "Gut zu wissen.",
-  "Das plane ich ein.",
-];
+// Neutral, damit sie zu jeder Antwort passen (im Live-Modus formuliert Claude sie individuell).
+const REACTIONS = ["Danke.", "Danke, das hilft mir.", "Danke für deine Offenheit.", "Verstanden.", "Danke.", "Gut, daran arbeiten wir.", "Gut zu wissen.", "Danke."];
 
 /** Antwort in kurze Stichworte zerlegen (Nachfrage-Antworten in Klammern fallen weg). */
 const clauses = (t: string | undefined, maxWords = 6) =>
@@ -44,7 +36,7 @@ export const fallback = {
     let followUp = "";
     if (left > 0 && step === 3 && /meide|vermeide|ungern|scheue|umgehe/i.test(answer)) followUp = "Was genau macht das für dich unangenehm?";
     else if (left > 0 && step === 6 && answer.split(/\s+/).length < 6) followUp = "Woran würdest du merken, dass du es geschafft hast?";
-    return { reaction: followUp ? (step === 3 ? "Danke für deine Offenheit." : "Gutes Ziel.") : REACTIONS[step - 1] || "Danke.", followUp };
+    return { reaction: followUp ? (step === 3 ? "Danke für deine Offenheit." : "Okay.") : REACTIONS[step - 1] || "Danke.", followUp };
   },
   profile(a: Partial<Profile>, correction = ""): ProfileOut {
     const fix = correction.replace(/^(ziel|lernziel)?\s*(lieber|eher|bitte)?\s*:?\s*/i, "").trim();

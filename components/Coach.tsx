@@ -285,16 +285,22 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     const history = () =>
       sRef.current.messages
         .filter((m) => m.kind === "text" && m.text)
-        .slice(-10)
+        .slice(-16)
         .map((m) => ({ from: m.from, text: m.text }));
     let left = MAX_FOLLOWUPS;
     let lead = "";
+    // Vorschläge: Kompass leitet sie aus dem bisherigen Gespräch ab. Die festen Demo-Chips
+    // erscheinen nur, solange alle Antworten bisher genau die Demo-Antworten waren.
+    let demoPath = true;
+    let suggested: string[] = [];
     for (let i = 0; i < OB_QUESTIONS.length; i++) {
       const q = OB_QUESTIONS[i];
       setObStep(i + 1);
       await say(lead ? `${lead} ${q.q}` : q.q, lead ? 300 : 650);
-      let answer = q.multi ? await askMulti(q.chips) : await ask(q.chips, q.ph || "Deine Antwort …");
-      const base = { step: i + 1, question: q.q, nextQuestion: OB_QUESTIONS[i + 1]?.q, name };
+      const chips = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
+      let answer = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
+      if (!q.multi && !q.chips.includes(answer)) demoPath = false;
+      const base = { step: i + 1, question: q.q, nextQuestion: OB_QUESTIONS[i + 1]?.q, nextIsChoice: Boolean(OB_QUESTIONS[i + 1]?.multi), name, answersSoFar: answers };
       let r = await ai("onboard", { ...base, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
       if (r.followUp && left > 0) {
         left--;
@@ -309,6 +315,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       }
       answers[q.key] = answer;
       lead = r.reaction;
+      suggested = (r.suggestions || []).filter((x) => x && x.length <= 60);
     }
 
     // Profil-Karte: erst wenn die Person „Passt“ sagt, ist das Onboarding abgeschlossen.
