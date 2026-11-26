@@ -92,7 +92,7 @@ export default function Rehearsal({
               <b style={{ fontSize: 10 }}>{r.after}</b>
             </Ring>
             <span>
-              <b>Präsentieren</b>
+              <b>Kommunikation</b>
               <br />
               <span className="mut xs">vorher {r.before} %</span>
             </span>

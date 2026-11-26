@@ -46,23 +46,23 @@ export const fallback = {
       wer: [clauses(a.role)[0], clauses(a.experience)[0], ...clauses(a.likes)].filter(Boolean).slice(0, 4),
       was: [clauses(a.vision)[0], clauses(a.learn)[0]].filter(Boolean),
       wie: [...clauses(a.preference), ...clauses(a.time)].filter(Boolean).slice(0, 4),
-      goal: `In 4 Wochen: ${goal || "sicher vor großen Runden präsentieren"}`,
+      goal: `In 4 Wochen: ${goal || "einen Einsatz sicher in der Fallbesprechung vorstellen"}`,
     };
   },
   welcome(p: Profile | null): WelcomeOut {
     const name = p?.name || "du";
     return {
-      summary: `Dein Lernpfad steht, ${name}. Fokus: sicher auftreten, mit Daten erzählen, moderieren.`,
-      focus: ["praes", "daten", "mod"],
-      firstStep: "60-Sekunden-Pitch im Team-Weekly",
+      summary: `Dein Lernpfad steht, ${name}. Fokus: Fallvorstellung, Traumaversorgung, Belastbarkeit.`,
+      focus: ["praes", "patient", "resi"],
+      firstStep: "Einsatz nach cABCDE aufbereiten",
     };
   },
   prep(topic: string, progress: number): PrepOut {
     return {
       text: `Gut, dass du dich meldest! Deine Struktur ist schon solide. Drei Wege bis morgen, du entscheidest:`,
       options: [
-        { kind: "video", title: "Grundlagen der Präsentationsstruktur", detail: "12 min" },
-        { kind: "read", title: "Folienvorlage und Leitfaden", detail: "15 min" },
+        { kind: "video", title: "Fallvorstellung klar strukturieren", detail: "12 min" },
+        { kind: "read", title: "Vorlage Fallvorstellung der Wache", detail: "15 min" },
         { kind: "practice", title: "Generalprobe mit Video", detail: "10 min" },
       ],
     };
@@ -72,40 +72,40 @@ export const fallback = {
       slides: [
         {
           title: topic.split(/,| vor | der /)[0].slice(0, 32),
-          bullets: ["Worum es geht", "Was wir erreicht haben", "Was wir brauchen"],
-          note: "Mit einer Kundengeschichte starten, nicht mit der Agenda.",
+          bullets: ["Einsatzanlass", "Was wir vorfanden", "Was wir lernen können"],
+          note: "Mit dem Bild an der Einsatzstelle starten, nicht mit der Agenda.",
         },
         {
-          title: "Q4: drei Prioritäten",
-          bullets: ["Releases", "App-Steuerung", "Service"],
-          note: "Mit der Kernzahl starten: 30 % schneller zum Release. Dann kurz Pause.",
+          title: "Lage und Ersteindruck",
+          bullets: ["Unfallmechanismus", "Ersteindruck Patient", "Nachforderung Notarzt"],
+          note: "Den Kernbefund zuerst nennen, dann kurz Pause.",
         },
         {
-          title: "Die Story hinter den Zahlen",
-          bullets: ["Was wir gelernt haben", "Ein Beispiel", "Warum es zählt"],
-          note: "Nach dem Beispiel Pause, Blickkontakt halten.",
+          title: "Versorgung nach cABCDE",
+          bullets: ["Kritische Blutung", "Atemweg und Atmung", "Kreislauf und Transport"],
+          note: "Bei jedem Schritt Blickkontakt in die Runde.",
         },
         {
-          title: "Risiken und Optionen",
-          bullets: ["Was uns bremsen kann", "Zwei Optionen mit Aufwand", "Unsere Empfehlung"],
+          title: "Was gut lief, was nicht",
+          bullets: ["Absprachen im Team", "Zeit an der Einsatzstelle", "Übergabe im Schockraum"],
           note: "Rückfragen erwarten: wiederholen, atmen, antworten.",
         },
         {
-          title: "Unsere Bitte an Sie",
-          bullets: ["Entscheidung heute", "Nächste Schritte", "Wer was bis wann"],
-          note: "Klare Bitte, Blick in die Runde.",
+          title: "Fragen an die Runde",
+          bullets: ["Was hättet ihr anders gemacht?", "Was nehmen wir mit?", "Nächste Schritte"],
+          note: "Offene Frage stellen, Blick in die Runde, aushalten.",
         },
       ],
     };
   },
   video(): VideoOut {
     return {
-      good: ["Kernbotschaft steht in den ersten 10 Sekunden."],
-      improve: ["Viele Füllwörter. Bei Bild 3 Blick auf den Laptop statt ins Publikum."],
-      tip: "Vor der Kernzahl einatmen und zwei Sekunden Pause.",
+      good: ["Klarer Einstieg mit dem Bild der Einsatzstelle."],
+      improve: ["Viele Füllwörter. Bei Bild 3 Blick auf den Laptop statt in die Runde."],
+      tip: "Vor dem Kernbefund einatmen und zwei Sekunden Pause.",
       levelChanges: [
-        { sub: "koerper", level: 3, reason: "Generalprobe mit Videoanalyse" },
-        { sub: "story", level: 3, reason: "Storyline mit Slides erarbeitet" },
+        { sub: "koerper", level: 4, reason: "Generalprobe mit Videoanalyse" },
+        { sub: "folien", level: 3, reason: "Fallvorstellung mit Folien erarbeitet" },
       ],
     };
   },
@@ -124,19 +124,19 @@ export const fallback = {
   peers(names: string[]): PeersOut {
     const all: PeerFeedback[] = [
       {
-        name: "Jonas Krüger",
-        stars: 4,
-        text: "Die Roadmap-Folie war sofort klar. Die Zahlen hätte ich gern größer gesehen.",
-      },
-      {
-        name: "Aylin Demir",
-        stars: 5,
-        text: "Ruhiger Einstieg, gute Story. Beim Budget hast du schneller gesprochen.",
-      },
-      {
-        name: "Markus Weber",
+        name: "Thomas Weber",
         stars: 4,
         text: "Starker roter Faden. Bei Rückfragen ruhig kurz Pause machen.",
+      },
+      {
+        name: "Lisa Schneider",
+        stars: 5,
+        text: "Die cABCDE-Folie hat mir als Azubi richtig geholfen.",
+      },
+      {
+        name: "Jonas Wagner",
+        stars: 4,
+        text: "Ruhiger Einstieg. Beim Zeitstrahl hast du schneller gesprochen.",
       },
     ];
     return { feedback: all.filter((f) => names.includes(f.name)) };
@@ -145,24 +145,24 @@ export const fallback = {
     return {
       summary: "Dein Lernpfad ist aktualisiert. Nächster Hebel: Rückfragen.",
       levelChanges: [
-        { sub: "story", level: 4, reason: "Kundenstory kam laut Kollegen sehr gut an" },
-        { sub: "koerper", level: 4, reason: "Sicherer Auftritt und Blickkontakt (Aylin)" },
-        { sub: "fragen", level: 2, reason: "Selbst- und Fremdeinschätzung: noch zu schnell bei Rückfragen" },
+        { sub: "story", level: 4, reason: "Einstieg mit dem Einsatzbild kam laut Kollegen sehr gut an" },
+        { sub: "struktur", level: 4, reason: "Klarer roter Faden nach cABCDE (Thomas, Lisa)" },
+        { sub: "fragen", level: 3, reason: "Selbst- und Fremdeinschätzung: bei Rückfragen noch zu schnell" },
       ],
       recommendations: [
-        { type: "Intern", title: "Souverän mit Rückfragen umgehen", why: "45 min" },
-        { type: "Extern", title: "Rhetorik-Stammtisch Stuttgart", why: "monatlich" },
+        { type: "Intern", title: "F13 Professionelle Gesprächsführung", why: "1 Tag" },
+        { type: "Extern", title: "Rhetorik-Stammtisch in Musterstadt", why: "monatlich" },
       ],
       memory: [
         "Bei Rückfragen sprichst du schneller. Erst zwei Sekunden Pause.",
-        "Einstieg mit Kundenstory wirkt",
+        "Einstieg mit dem Einsatzbild wirkt",
         "Lernt gut mit Video-Generalprobe",
       ],
     };
   },
   chat(): TextOut {
     return {
-      text: "Im Skript-Modus kann ich das nicht frei beantworten. Probier: „Ich muss morgen präsentieren“.",
+      text: "Im Skript-Modus kann ich das nicht frei beantworten. Probier: „Ich muss morgen bei der Fallbesprechung vorstellen“.",
     };
   },
 };

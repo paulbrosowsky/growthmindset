@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
 import { fallback, type OnboardOut } from "@/lib/fallbacks";
-import { findSkill, MANDATORY, MANDATORY_DONE_DEFAULT, roleFor, skillProgress } from "@/lib/knowledge";
+import { findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
 import type { AppState } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -41,7 +41,7 @@ function context(s: AppState): string {
     lines.push("Profil:\n" + fields.filter(([, v]) => v).map(([k, v]) => `- ${k}: ${v}`).join("\n"));
   }
   lines.push(
-    "Lernpfad (Skill: Fortschritt; Teilkompetenzen mit Stufe 0-5):\n" +
+    "Lernpfad (Skill: Fortschritt; Teilkompetenzen mit Stufe 0-4):\n" +
       s.areas
         .flatMap((a) =>
           a.skills.map(
@@ -52,10 +52,22 @@ function context(s: AppState): string {
         .join("\n"),
   );
   const role = roleFor(p?.role);
-  lines.push(`Stellenprofil: ${role.name} (Soll: ${role.core.map((c) => `${c.skill} ${c.soll}/5`).join(", ")})`);
+  const rows = role.core.map((c) => {
+    const sk = c.skill ? findSkill(s.areas, c.skill) : undefined;
+    if (!sk) return { text: `${c.name}: Soll ${c.soll}, Ist noch nicht bewertet`, gap: "" };
+    const ist = skillLevel(sk);
+    const fb = ist < c.soll ? trainingFor(sk.id, role) : undefined;
+    return {
+      text: `${c.name} [${sk.id}]: Ist ${ist}, Soll ${c.soll}`,
+      gap: ist < c.soll ? `${c.name} (Ist ${ist}, Soll ${c.soll})${fb ? `: passend ${fb.id} ${fb.title}` : ""}` : "",
+    };
+  });
+  lines.push(`Jobprofil: ${role.name} (${role.dept})\nKompetenzbewertung (Stufen 1 bis 4):\n${rows.map((r) => `- ${r.text}`).join("\n")}\nEntwicklungsmöglichkeiten: ${role.growth.join("; ")}`);
+  const gaps = rows.map((r) => r.gap).filter(Boolean);
+  if (gaps.length) lines.push(`Kompetenzlücken laut Jobprofil: ${gaps.join("; ")}`);
   const done = s.mandatoryDone ?? MANDATORY_DONE_DEFAULT;
-  const open = MANDATORY.filter((m) => !done.includes(m.id));
-  if (open.length) lines.push(`Offene Pflichtfortbildungen: ${open.map((m) => m.title).join(", ")}`);
+  const open = mandatoryFor(p?.role).filter((m) => !done.includes(m.id));
+  if (open.length) lines.push(`Offene oder abgelaufene Pflichtschulungen: ${open.map((m) => `${m.id} ${m.title}`).join(", ")}`);
   if (s.journal.length)
     lines.push("Letzte Erfahrungen:\n" + s.journal.slice(0, 6).map((j) => `- ${j.kind}: ${j.title}${j.detail ? ` (${j.detail})` : ""}`).join("\n"));
   if (s.memory.length) lines.push("Was du dir über die Person gemerkt hast:\n" + s.memory.map((m) => `- ${m}`).join("\n"));
@@ -88,7 +100,7 @@ export async function POST(req: NextRequest) {
     switch (task) {
       case "welcome": {
         const out = await ask<ReturnType<typeof fallback.welcome>>(
-          `${ctx}\n\nDas Onboarding ist abgeschlossen und das Lernziel gemeinsam vereinbart, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 1 kurzer Satz an ${name} (max. 15 Wörter), der Fokus des Lernpfads.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt aus dem Arbeitsalltag, der zum vereinbarten 4-Wochen-Lernziel, zur Lernweise und zum Zeitrahmen passt, Stichwort, max. 6 Wörter.`,
+          `${ctx}\n\nDas Onboarding ist abgeschlossen und das Lernziel gemeinsam vereinbart, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 1 kurzer Satz an ${name} (max. 15 Wörter), der Fokus des Lernpfads.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle, Kompetenzlücken laut Jobprofil und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt aus dem Arbeitsalltag, der zum vereinbarten 4-Wochen-Lernziel, zur Lernweise und zum Zeitrahmen passt, Stichwort, max. 6 Wörter.`,
           obj({ summary: str, focus: strArr, firstStep: str }),
         );
         if (out && !out.focus.includes("praes")) out.focus = ["praes", ...out.focus].slice(0, 3);
@@ -105,7 +117,7 @@ export async function POST(req: NextRequest) {
           .map(([k, v]) => `- ${k}: ${v}`)
           .join("\n");
         const out = await ask<OnboardOut>(
-          `Du lernst ${who} gerade im Onboarding kennen, um gemeinsam ein Lernziel zu finden. Du führst ein zusammenhängendes Gespräch durch 8 Themen in fester Reihenfolge: Rolle, bisherige Stationen, Spaß und Meiden, Perspektive in 3 Jahren, was sie dafür lernen will, Ziel für 4 Wochen, Lernweise, Zeitrahmen.\n${known ? `Bisher bekannt:\n${known}\n` : ""}\nGesprächsverlauf (die letzte Nachricht ist die Antwort von ${who}):\n${history.map((h) => `${h.from === "me" ? who : "Kompass"}: ${h.text}`).join("\n")}\n\nDeine zuletzt gestellte Frage: „${payload.question}“\nAntwort von ${who}: „${payload.answer}“\n${payload.nextTopic ? `Als Nächstes geht es um: ${payload.nextTopic}.` : "Das war die letzte Kernfrage, danach folgt die Zusammenfassung."}\n\nreaction: 1 kurzer Satz, der sich konkret auf genau diese Antwort bezieht (greif ein Detail daraus auf) und zur nächsten Frage hinführt, ohne sie vorwegzunehmen. Max. 12 Wörter, keine Frage, keine Floskel wie „Spannend“, kein Lob für Talent, nichts erfinden, was nicht gesagt wurde. Bei einer sehr kurzen oder ausweichenden Antwort („weiß nicht“) neutral und ermutigend.\nfollowUp: ${isFollowUpAnswer || left <= 0 ? "leer lassen." : `Meistens leer lassen. Nur wenn die Antwort für das Lernziel wirklich zu unklar ist oder etwas Zentrales andeutet (z. B. etwas, das die Person meidet), eine individuelle, offene Nachfrage, max. 14 Wörter. Noch ${left} Nachfrage(n) im ganzen Onboarding erlaubt.`}\nnextQuestion: ${payload.nextTopic ? `die nächste Frage zum Thema „${payload.nextTopic}“, so formuliert, dass sie an die Antwort von eben anknüpft und das Gespräch als roten Faden weiterführt (z. B. „Was musst du lernen, um dorthin zu kommen?“). Genau eine Frage, max. 16 Wörter, endet mit „?“, du-Form. Bleib beim Thema, frag nichts anderes. Wenn followUp gesetzt ist, trotzdem ausfüllen.` : "leer lassen."}\nsuggestions: ${payload.nextQuestion && !payload.nextIsChoice ? `0 bis 2 mögliche Antworten auf deine nextQuestion, so wie ${who} sie selbst tippen würde (Ich-Form oder Stichwort, max. 8 Wörter). Sie müssen zu Rolle, Stationen und allen bisherigen Antworten passen und dürfen ihnen nicht widersprechen. Nichts Erfundenes wie konkrete Firmen oder Zahlen, die nicht genannt wurden. Lieber leer als unpassend.` : "leer lassen."}`,
+          `Du lernst ${who} gerade im Onboarding kennen, um gemeinsam ein Lernziel zu finden. Du führst ein zusammenhängendes Gespräch durch 8 Themen in fester Reihenfolge: Rolle, bisherige Stationen, Spaß und Meiden, Perspektive in 3 Jahren, was sie dafür lernen will, Ziel für 4 Wochen, Lernweise, Zeitrahmen.\n${known ? `Bisher bekannt:\n${known}\n` : ""}\nGesprächsverlauf (die letzte Nachricht ist die Antwort von ${who}):\n${history.map((h) => `${h.from === "me" ? who : "Kompass"}: ${h.text}`).join("\n")}\n\nDeine zuletzt gestellte Frage: „${payload.question}“\nAntwort von ${who}: „${payload.answer}“\n${payload.nextTopic ? `Als Nächstes geht es um: ${payload.nextTopic}.` : "Das war die letzte Kernfrage, danach folgt die Zusammenfassung."}\n\nreaction: 1 kurzer Satz, der sich konkret auf genau diese Antwort bezieht (greif ein Detail daraus auf) und zur nächsten Frage hinführt, ohne sie vorwegzunehmen. Max. 12 Wörter, keine Frage, keine Floskel wie „Spannend“, kein Lob für Talent, nichts erfinden, was nicht gesagt wurde. Bei einer sehr kurzen oder ausweichenden Antwort („weiß nicht“) neutral und ermutigend.\nfollowUp: ${isFollowUpAnswer || left <= 0 ? "leer lassen." : `Meistens leer lassen. Nur wenn die Antwort für das Lernziel wirklich zu unklar ist oder etwas Zentrales andeutet (z. B. etwas, das die Person meidet), eine individuelle, offene Nachfrage, max. 14 Wörter. Noch ${left} Nachfrage(n) im ganzen Onboarding erlaubt.`}\nnextQuestion: ${payload.nextTopic ? `die nächste Frage zum Thema „${payload.nextTopic}“, so formuliert, dass sie an die Antwort von eben anknüpft und das Gespräch als roten Faden weiterführt (z. B. „Was musst du lernen, um dorthin zu kommen?“). Genau eine Frage, max. 16 Wörter, endet mit „?“, du-Form. Bleib beim Thema, frag nichts anderes. Wenn followUp gesetzt ist, trotzdem ausfüllen.` : "leer lassen."}\nsuggestions: ${payload.nextQuestion && !payload.nextIsChoice ? `0 bis 2 mögliche Antworten auf deine nextQuestion, so wie ${who} sie selbst tippen würde (Ich-Form oder Stichwort, max. 8 Wörter). Sie müssen zu Rolle, Stationen und allen bisherigen Antworten passen und dürfen ihnen nicht widersprechen. Leite sie aus dem Unternehmenskontext ab, sobald die Rolle bekannt ist: Jobprofil, Entwicklungsmöglichkeiten der Rolle, typische Kompetenzlücken und passende Fortbildungen des Kreisverbands. Nichts Erfundenes wie Zahlen oder Erlebnisse, die nicht genannt wurden. Lieber leer als unpassend.` : "leer lassen."}`,
           obj({ reaction: str, followUp: str, nextQuestion: str, suggestions: strArr }),
           { maxTokens: 1000 },
         );
@@ -120,7 +132,7 @@ export async function POST(req: NextRequest) {
       case "profile": {
         const a = payload.answers || {};
         const out = await ask<ReturnType<typeof fallback.profile>>(
-          `Fasse das Onboarding-Gespräch mit ${a.name} als Profil-Karte zusammen. Antworten:\n- Rolle: ${a.role}\n- Bisherige Stationen: ${a.experience}\n- Macht Spaß / meidet: ${a.likes}\n- Möchte lernen: ${a.learn}\n- In 3 Jahren: ${a.vision}\n- In 4 Wochen erreichen: ${a.goal}\n- Lernt am besten: ${a.preference}\n- Zeitrahmen: ${a.time}\n${payload.correction ? `\nDie letzte Zusammenfassung passte noch nicht. Korrektur von ${a.name}: „${payload.correction}“. Übernimm sie.\n` : ""}\nwer, was, wie: je 2 bis 3 Stichworte (max. 5 Wörter), in Du-Form gedacht, ohne Namen. wer = Rolle, Erfahrung, was Spaß macht und was gemieden wird. was = Lernthema und Perspektive in 3 Jahren. wie = Lernweise und Zeitrahmen.\ngoal: das gemeinsame Lernziel für die nächsten 4 Wochen, konkret und überprüfbar, max. 12 Wörter, beginnt mit „In 4 Wochen“.\nintro: 1 kurzer Satz an ${a.name}, der zur Karte überleitet, max. 10 Wörter.`,
+          `Fasse das Onboarding-Gespräch mit ${a.name} als Profil-Karte zusammen. Antworten:\n- Rolle: ${a.role}\n- Bisherige Stationen: ${a.experience}\n- Macht Spaß / meidet: ${a.likes}\n- Möchte lernen: ${a.learn}\n- In 3 Jahren: ${a.vision}\n- In 4 Wochen erreichen: ${a.goal}\n- Lernt am besten: ${a.preference}\n- Zeitrahmen: ${a.time}\n${payload.correction ? `\nDie letzte Zusammenfassung passte noch nicht. Korrektur von ${a.name}: „${payload.correction}“. Übernimm sie.\n` : ""}\nwer, was, wie: je 2 bis 3 Stichworte (max. 5 Wörter), in Du-Form gedacht, ohne Namen. wer = Rolle, Erfahrung, was Spaß macht und was gemieden wird. was = Lernthema und Perspektive in 3 Jahren. wie = Lernweise und Zeitrahmen.\ngoal: das gemeinsame Lernziel für die nächsten 4 Wochen, konkret und überprüfbar, max. 12 Wörter, beginnt mit „In 4 Wochen“. Es bleibt das Ziel der Person; wenn es passt, knüpfe an eine Kompetenz aus ihrem Jobprofil an.\nintro: 1 kurzer Satz an ${a.name}, der zur Karte überleitet, max. 10 Wörter.`,
           obj({ intro: str, wer: strArr, was: strArr, wie: strArr, goal: str }),
           { maxTokens: 1500 },
         );
@@ -128,7 +140,7 @@ export async function POST(req: NextRequest) {
       }
       case "prep": {
         const out = await ask<ReturnType<typeof fallback.prep>>(
-          `${ctx}\n\n${name} hat gesagt, morgen eine Präsentation zu halten, und möchte sich vorbereiten. Thema und Publikum: „${payload.topic}“.\ntext: max. 20 Wörter. Würdige kurz den Fortschritt im Skill Präsentieren (${praesPct} %) und leite zu drei Wegen über, z. B. „Drei Wege bis morgen, du entscheidest:“.\noptions: genau 3 in dieser Reihenfolge: kind "video" (kurzes Grundlagen-Video), kind "read" (etwas zum Lesen), kind "practice" (eigenes Video aufnehmen und üben, mit Feedback von dir). title: max. 40 Zeichen. detail: nur die Dauer, z. B. „12 min“.`,
+          `${ctx}\n\n${name} hat gesagt, morgen eine Präsentation zu halten, und möchte sich vorbereiten. Thema und Publikum: „${payload.topic}“.\ntext: max. 20 Wörter. Würdige kurz den Fortschritt im Skill Kommunikation (${praesPct} %) und leite zu drei Wegen über, z. B. „Drei Wege bis morgen, du entscheidest:“.\noptions: genau 3 in dieser Reihenfolge: kind "video" (kurzes Grundlagen-Video), kind "read" (etwas zum Lesen), kind "practice" (eigenes Video aufnehmen und üben, mit Feedback von dir). title: max. 40 Zeichen. detail: nur die Dauer, z. B. „12 min“.`,
           obj({
             text: str,
             options: { type: "array", items: obj({ kind: { type: "string", enum: ["video", "read", "practice"] }, title: str, detail: str }) },
@@ -139,7 +151,7 @@ export async function POST(req: NextRequest) {
       }
       case "slides": {
         const out = await ask<ReturnType<typeof fallback.slides>>(
-          `${ctx}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit Storytelling-Bogen: Einstieg mit einer kurzen Geschichte, Kernaussage, Zahlen mit Bedeutung, Risiken und Optionen, klare Bitte am Ende. title max. 32 Zeichen, bullets: genau 3 Stichpunkte mit je max. 30 Zeichen, note: Sprechernotiz in 1 kurzen Satz (max. 14 Wörter), die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Zahlen, nutze Platzhalter wie „Kennzahl X“.`,
+          `${ctx}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit klarem Bogen passend zum Anlass. Bei einer Fallvorstellung: Einsatzanlass und Einstiegsbild, Lage und Ersteindruck, Versorgung (z. B. nach cABCDE), was gut lief und was nicht, Lernpunkte und Fragen an die Runde. Keine echten Patientendaten, alles anonymisiert. title max. 32 Zeichen, bullets: genau 3 Stichpunkte mit je max. 30 Zeichen, note: Sprechernotiz in 1 kurzen Satz (max. 14 Wörter), die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Werte oder Medikamentendosen, nutze Platzhalter wie „Vitalwert X“.`,
           obj({ slides: { type: "array", items: obj({ title: str, bullets: strArr, note: str }) } }),
           { maxTokens: 3000 },
         );
@@ -186,7 +198,7 @@ export async function POST(req: NextRequest) {
       }
       case "synth": {
         const out = await ask<ReturnType<typeof fallback.synth>>(
-          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: max. 10 Wörter an ${name}: Ergebnis und nächster Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 5, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 2 neue Vorschläge: ein internes Angebot aus dem Katalog (type "Intern"), ein externer Inhalt (type "Extern"). title max. 40 Zeichen, why nur Dauer oder Zeitpunkt, z. B. „45 min“ oder „diese Woche“.\nmemory: 2 bis 3 Erkenntnisse über ${name} als Stichworte, je max. 6 Wörter.`,
+          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: max. 10 Wörter an ${name}: Ergebnis und nächster Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 4, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 2 neue Vorschläge: eine Fortbildung aus dem Katalog des Kreisverbands mit ID am Anfang, z. B. „F13 Professionelle Gesprächsführung“ (type "Intern"), ein externer Inhalt (type "Extern"). title max. 48 Zeichen, why nur Dauer oder Zeitpunkt, z. B. „45 min“ oder „diese Woche“.\nmemory: 2 bis 3 Erkenntnisse über ${name} als Stichworte, je max. 6 Wörter.`,
           obj({
             summary: str,
             levelChanges,
@@ -200,7 +212,7 @@ export async function POST(req: NextRequest) {
       case "chat": {
         const history: { from: string; text: string }[] = payload.history || [];
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Unternehmen oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
+          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Jobprofil und Kompetenzlücken, Fortbildungen und Pflichtschulungen des Kreisverbands oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
           obj({ text: str }),
           { maxTokens: 1500 },
         );

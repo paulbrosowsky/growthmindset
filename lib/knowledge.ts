@@ -1,92 +1,293 @@
-// Generated demo knowledge base. In a real deployment HR/L&D curates this.
+// Demo-Unternehmenskontext: DRK-Kreisverband Musterstadt e. V. (fiktiv, siehe docs/DRK_Personalentwicklung_Demodaten.md).
+// In einem echten Betrieb pflegt die Personalentwicklung diese Daten.
 import type { AppState, Area, Rec, Skill } from "./types";
 
-export const COMPANY = {
-  name: "Neckartal Systemtechnik GmbH",
-  short: "Neckartal",
-  about:
-    "Mittelständischer Hersteller von Steuerungen und Software für Wärmepumpen, 850 Mitarbeitende, Sitz in Esslingen am Neckar.",
-  vision: "Wir machen klimafreundliches Heizen für jedes Haus einfach.",
-  goals: [
-    "Software-Anteil am Umsatz bis 2027 verdoppeln",
-    "Time-to-Market neuer Produkte um 30 % senken",
-    "50 % der Führungspositionen aus eigenen Reihen besetzen",
-  ],
-  values: ["Neugier", "Verantwortung", "Miteinander"],
-  roles: [
-    {
-      name: "Produktmanager/in",
-      match: "produkt|product|pm\\b",
-      mission: "Verantwortet Produkte von der Idee bis zum Markterfolg.",
-      core: [
-        { skill: "praes", soll: 4 },
-        { skill: "pm", soll: 4 },
-        { skill: "daten", soll: 3 },
-        { skill: "mod", soll: 3 },
-      ],
-    },
-    {
-      name: "Entwickler/in",
-      match: "entwick|develop|software|engineer|programm",
-      mission: "Baut Steuerungen und Software für unsere Wärmepumpen.",
-      core: [
-        { skill: "wp", soll: 4 },
-        { skill: "agil", soll: 4 },
-        { skill: "fb", soll: 3 },
-      ],
-    },
-    {
-      name: "UX-Designer/in",
-      match: "ux|design|nutzer",
-      mission: "Macht unsere Produkte einfach und verständlich.",
-      core: [
-        { skill: "ux", soll: 5 },
-        { skill: "praes", soll: 3 },
-        { skill: "mod", soll: 3 },
-      ],
-    },
-    {
-      name: "Teamleiter/in",
-      match: "team|leit|führ|lead|manager",
-      mission: "Führt ein Team und entwickelt Menschen weiter.",
-      core: [
-        { skill: "fb", soll: 5 },
-        { skill: "mod", soll: 4 },
-        { skill: "resi", soll: 4 },
-        { skill: "praes", soll: 4 },
-      ],
-    },
-  ] as { name: string; match: string; mission: string; core: { skill: string; soll: number }[] }[],
-};
-
-export const CATALOG: { title: string; type: string; duration: string; skill: string }[] = [
-  { title: "Wirkungsvoll präsentieren", type: "Interner Workshop", duration: "2 × 3 Stunden", skill: "praes" },
-  { title: "Storytelling mit Daten", type: "Interner Workshop", duration: "1 Tag", skill: "praes" },
-  { title: "Souverän mit Rückfragen umgehen", type: "E-Learning", duration: "45 Minuten", skill: "praes" },
-  { title: "Folienvorlage und Präsentationsleitfaden", type: "Intranet-Ressource", duration: "15 Minuten", skill: "praes" },
-  { title: "Moderation für Einsteiger", type: "Interner Workshop", duration: "1 Tag", skill: "mod" },
-  { title: "Feedback nach dem SBI-Modell", type: "E-Learning", duration: "30 Minuten", skill: "fb" },
-  { title: "SQL für Produktleute", type: "Lernpfad Neckartal Academy", duration: "6 × 1 Stunde", skill: "daten" },
-  { title: "Wärmepumpe kompakt", type: "Interne Schulung", duration: "4 Stunden", skill: "wp" },
-  { title: "Resilienz im Arbeitsalltag (mit der Betriebskrankenkasse)", type: "Workshop", duration: "3 Stunden", skill: "resi" },
-  { title: "Mentoring-Programm Nachwuchsführung", type: "Programm", duration: "6 Monate", skill: "lernen" },
+/** Kompetenzstufen des Kreisverbands (1 bis 4). Teilkompetenzen nutzen dieselbe Skala, 0 = noch nicht bewertet. */
+export const MAX_LEVEL = 4;
+export const LEVELS: { n: number; name: string; text: string }[] = [
+  { n: 1, name: "Grundlagen", text: "Kennt grundlegende Zusammenhänge und benötigt Anleitung." },
+  { n: 2, name: "Fortgeschritten", text: "Kann Aufgaben im normalen Arbeitsalltag selbstständig durchführen." },
+  { n: 3, name: "Experte", text: "Beherrscht komplexe Aufgaben und kann andere fachlich unterstützen." },
+  { n: 4, name: "Multiplikator", text: "Kann Wissen vermitteln, Prozesse gestalten und andere Mitarbeitende entwickeln." },
 ];
 
+type Core = { name: string; skill?: string; soll: number };
+export type RoleProfile = {
+  id: string;
+  name: string;
+  dept: string;
+  lead: string;
+  match: string;
+  mission: string;
+  tasks: string[];
+  core: Core[];
+  growth: string[];
+  /** Pflichtschulungen (IDs), die für das Jobprofil verpflichtend zugeordnet sind */
+  pflicht: string[];
+};
+
+const ALL_P = ["P01", "P02", "P03", "P04", "P05"];
+
+export const COMPANY = {
+  name: "DRK-Kreisverband Musterstadt e. V.",
+  short: "DRK Musterstadt",
+  about:
+    "Gemeinnützige Hilfsorganisation mit Rettungsdienst, rund 180 Mitarbeitende und 35 Ehrenamtliche, mehrere Rettungswachen und eine zentrale Verwaltung. Geschäftsfelder: Rettungsdienst, Ausbildung, Verwaltung, Materialwirtschaft und Logistik.",
+  vision:
+    "Eine starke Gemeinschaft, die Menschen in Not zuverlässig hilft. Mitarbeitende sind das wichtigste Kapital, ihre fachlichen, persönlichen und sozialen Kompetenzen werden kontinuierlich gefördert.",
+  mission:
+    "Professionelle Hilfe in Notfallsituationen, qualifizierte Nachwuchskräfte ausbilden, ein Arbeitsumfeld schaffen, in dem sich Mitarbeitende entwickeln und langfristig engagieren.",
+  values: ["Menschlichkeit", "Professionalität", "Teamgeist", "Verantwortung", "Weiterentwicklung", "Verlässlichkeit"],
+  dimensions: [
+    "Fachkompetenz (berufsspezifisches Wissen und Können)",
+    "Methodenkompetenz (Aufgaben strukturiert lösen, Dokumentation)",
+    "Sozialkompetenz (Kommunikation, Teamfähigkeit, Empathie)",
+    "Selbstkompetenz (Eigenverantwortung, Belastbarkeit, Zuverlässigkeit)",
+    "Führungskompetenz (anleiten, Konflikte lösen, entscheiden)",
+  ],
+  general: "Für alle Mitarbeitenden gilt mindestens Stufe 2 in Teamfähigkeit, Kommunikation, Verantwortungsbewusstsein, Zuverlässigkeit, Datenschutzbewusstsein, Lernbereitschaft und digitaler Grundkompetenz.",
+  // Reihenfolge = Prüfreihenfolge für die frei eingegebene Rolle (spezifische zuerst).
+  roles: [
+    {
+      id: "azubi",
+      name: "Azubi Notfallsanitäter/in",
+      dept: "Rettungsdienst / Ausbildung",
+      lead: "Praxisanleitung und Wachenleitung",
+      match: "azubi|auszubild|ausbildung zum|in ausbildung",
+      mission: "Erwerb der fachlichen und persönlichen Kompetenzen für den Beruf Notfallsanitäter/in.",
+      tasks: ["Theoretische und praktische Ausbildung", "Rettungseinsätze begleiten", "Patientenversorgung unter Anleitung", "Ausbildungsinhalte dokumentieren"],
+      core: [
+        { name: "Notfallmedizinisches Fachwissen", skill: "notfall", soll: 2 },
+        { name: "Patientenversorgung", skill: "patient", soll: 2 },
+        { name: "Kommunikation", skill: "praes", soll: 2 },
+        { name: "Teamfähigkeit", skill: "team", soll: 2 },
+        { name: "Belastbarkeit", skill: "resi", soll: 2 },
+        { name: "Lernbereitschaft", skill: "lernen", soll: 3 },
+        { name: "Dokumentation", skill: "doku", soll: 2 },
+        { name: "Selbstorganisation", skill: "orga", soll: 2 },
+      ],
+      growth: ["Erfolgreicher Ausbildungsabschluss", "Schrittweise Übernahme beruflicher Tätigkeiten", "Entwicklung zum/zur Notfallsanitäter/in"],
+      pflicht: ["P01", "P02", "P04", "P05"],
+    },
+    {
+      id: "praxisanleitung",
+      name: "Praxisanleiter/in",
+      dept: "Rettungsdienst / Ausbildung",
+      lead: "Wachenleitung",
+      match: "praxisanleit|anleiter",
+      mission: "Fachliche und pädagogische Begleitung von Auszubildenden.",
+      tasks: ["Praxisanleitungen planen und durchführen", "Azubis im Einsatzdienst begleiten", "Ausbildungsfortschritt bewerten", "Feedback- und Entwicklungsgespräche führen"],
+      core: [
+        { name: "Notfallmedizinisches Fachwissen", skill: "notfall", soll: 4 },
+        { name: "Pädagogische Kompetenz", skill: "paed", soll: 3 },
+        { name: "Kommunikationsfähigkeit", skill: "praes", soll: 4 },
+        { name: "Feedbackkompetenz", skill: "fbk", soll: 3 },
+        { name: "Konfliktmanagement", skill: "konflikt", soll: 3 },
+        { name: "Organisationsfähigkeit", skill: "orga", soll: 3 },
+        { name: "Führungskompetenz", skill: "fuehrung", soll: 3 },
+        { name: "Dokumentation", skill: "doku", soll: 3 },
+      ],
+      growth: ["Weiterbildung in Erwachsenenbildung", "Pädagogische Kompetenzen erweitern", "Entwicklung zur Ausbildungskoordination"],
+      pflicht: ALL_P,
+    },
+    {
+      id: "wachenleitung",
+      name: "Wachenleitung",
+      dept: "Rettungsdienst",
+      lead: "Geschäftsführung / Rettungsdienstleitung",
+      match: "wachenleit|wachleit|leiter der wache|leitung der wache",
+      mission: "Organisation, Führung und Sicherstellung eines reibungslosen Betriebs der Rettungswache.",
+      tasks: ["Mitarbeitende führen und entwickeln", "Dienst- und Urlaubsplanung", "Qualitäts- und Sicherheitsstandards überwachen", "Fortbildungen und Pflichtschulungen planen"],
+      core: [
+        { name: "Führungskompetenz", skill: "fuehrung", soll: 4 },
+        { name: "Personalmanagement", soll: 3 },
+        { name: "Organisationsfähigkeit", skill: "orga", soll: 4 },
+        { name: "Kommunikation", skill: "praes", soll: 4 },
+        { name: "Konfliktmanagement", skill: "konflikt", soll: 3 },
+        { name: "Rettungsdienstliches Fachwissen", skill: "notfall", soll: 3 },
+        { name: "Qualitätsmanagement", soll: 3 },
+        { name: "Entscheidungsfähigkeit", skill: "entscheid", soll: 4 },
+        { name: "Personalentwicklung", skill: "fbk", soll: 3 },
+      ],
+      growth: ["Weiterbildung Führung und Management", "Qualifizierung im Qualitätsmanagement", "Entwicklung zur Rettungsdienstleitung"],
+      pflicht: ALL_P,
+    },
+    {
+      id: "notsan",
+      name: "Notfallsanitäter/in",
+      dept: "Rettungsdienst",
+      lead: "Wachenleitung",
+      match: "notfallsan|notsan|nfs\\b",
+      mission: "Professionelle Versorgung und Betreuung von Notfallpatienten.",
+      tasks: [
+        "Notfallmedizinische Maßnahmen eigenverantwortlich durchführen",
+        "Notfallsituationen einschätzen und beurteilen",
+        "Lebensrettende Maßnahmen",
+        "Betreuung und Transport von Patienten",
+        "Einsätze dokumentieren",
+        "Zusammenarbeit mit Ärzten, Kliniken und Einsatzkräften",
+      ],
+      core: [
+        { name: "Notfallmedizinisches Fachwissen", skill: "notfall", soll: 4 },
+        { name: "Patientenversorgung", skill: "patient", soll: 4 },
+        { name: "Kommunikation", skill: "praes", soll: 3 },
+        { name: "Teamfähigkeit", skill: "team", soll: 3 },
+        { name: "Belastbarkeit", skill: "resi", soll: 3 },
+        { name: "Entscheidungsfähigkeit", skill: "entscheid", soll: 3 },
+        { name: "Dokumentation", skill: "doku", soll: 2 },
+        { name: "Verantwortungsbewusstsein", skill: "verantw", soll: 3 },
+      ],
+      growth: ["Fachliche Spezialisierung in der Notfallmedizin", "Weiterbildung zum/zur Praxisanleiter/in", "Entwicklung zur Wachenleitung"],
+      pflicht: ALL_P,
+    },
+    {
+      id: "rettsan",
+      name: "Rettungssanitäter/in",
+      dept: "Rettungsdienst",
+      lead: "Wachenleitung",
+      match: "rettungssan|rettsan|\\brs\\b|krankentransport",
+      mission: "Unterstützung der Notfallrettung und Durchführung qualifizierter Krankentransporte.",
+      tasks: ["Patienten versorgen und betreuen", "Krankentransporte durchführen", "Notfallsanitäter unterstützen", "Rettungsmittel kontrollieren und pflegen"],
+      core: [
+        { name: "Medizinische Fachkompetenz", skill: "notfall", soll: 3 },
+        { name: "Patientenbetreuung", skill: "patient", soll: 3 },
+        { name: "Kommunikation", skill: "praes", soll: 2 },
+        { name: "Teamfähigkeit", skill: "team", soll: 3 },
+        { name: "Belastbarkeit", skill: "resi", soll: 3 },
+        { name: "Fahrzeug- und Materialkunde", skill: "material", soll: 2 },
+        { name: "Dokumentation", skill: "doku", soll: 2 },
+        { name: "Verantwortungsbewusstsein", skill: "verantw", soll: 3 },
+      ],
+      growth: ["Weiterbildung zum/zur Notfallsanitäter/in", "Spezialisierung im Rettungsdienst"],
+      pflicht: ALL_P,
+    },
+    {
+      id: "fsj",
+      name: "FSJler/in",
+      dept: "Rettungsdienst",
+      lead: "Praxisanleitung / Wachenleitung",
+      match: "fsj|freiwillig|bufdi|bundesfreiwillig",
+      mission: "Unterstützung des Rettungsdienstes und Einblick in soziale und medizinische Berufsfelder.",
+      tasks: ["Organisatorische Tätigkeiten", "Fahrzeuge vorbereiten und reinigen", "Verbrauchsmaterial auffüllen", "Seminare und pädagogische Begleitung"],
+      core: [
+        { name: "Grundlegendes Fachwissen", skill: "notfall", soll: 1 },
+        { name: "Kommunikation", skill: "praes", soll: 2 },
+        { name: "Teamfähigkeit", skill: "team", soll: 2 },
+        { name: "Zuverlässigkeit", soll: 2 },
+        { name: "Lernbereitschaft", skill: "lernen", soll: 3 },
+        { name: "Selbstorganisation", skill: "orga", soll: 2 },
+        { name: "Verantwortungsbewusstsein", skill: "verantw", soll: 2 },
+      ],
+      growth: ["Erste Erfahrungen im Rettungsdienst", "Vorbereitung auf die Ausbildung zum/zur Rettungssanitäter/in", "Persönliche und soziale Weiterentwicklung"],
+      pflicht: ["P02", "P04", "P05"],
+    },
+    {
+      id: "lager",
+      name: "Lagermitarbeiter/in",
+      dept: "Materialwirtschaft",
+      lead: "Bereichsleitung Materialwirtschaft",
+      match: "lager|logistik|material",
+      mission: "Sicherstellung der Materialversorgung und Lagerorganisation.",
+      tasks: ["Waren annehmen und kontrollieren", "Materialien einlagern und verwalten", "Verbrauchsmaterial ausgeben", "Inventuren durchführen"],
+      core: [
+        { name: "Lagerwirtschaft", soll: 3 },
+        { name: "Warenwirtschaftssysteme", soll: 2 },
+        { name: "Materialkenntnisse", skill: "material", soll: 3 },
+        { name: "Organisationsfähigkeit", skill: "orga", soll: 3 },
+        { name: "Sorgfalt", skill: "verantw", soll: 3 },
+        { name: "Teamfähigkeit", skill: "team", soll: 2 },
+        { name: "Digitale Kompetenz", soll: 2 },
+        { name: "Arbeitssicherheit", soll: 3 },
+      ],
+      growth: ["Weiterbildung in Lagerlogistik", "Zusatzqualifikationen in der Materialwirtschaft", "Entwicklung zur Lagerleitung"],
+      pflicht: ["P04", "P05"],
+    },
+    {
+      id: "personal",
+      name: "Personaler/in",
+      dept: "Personalwesen",
+      lead: "Geschäftsführung",
+      match: "personal|\\bhr\\b|recruit",
+      mission: "Betreuung und Weiterentwicklung der Mitarbeitenden sowie Unterstützung der Personalprozesse.",
+      tasks: ["Personaladministration", "Recruiting und Onboarding", "Fort- und Weiterbildungen organisieren", "Qualifikationen und Pflichtschulungen verwalten"],
+      core: [
+        { name: "Arbeitsrechtliche Kenntnisse", soll: 3 },
+        { name: "Personalmanagement", soll: 3 },
+        { name: "Kommunikation", skill: "praes", soll: 3 },
+        { name: "Datenschutz", soll: 3 },
+        { name: "Organisationsfähigkeit", skill: "orga", soll: 3 },
+        { name: "Digitale Kompetenz", soll: 3 },
+        { name: "Konfliktmanagement", skill: "konflikt", soll: 2 },
+        { name: "Beratungskompetenz", skill: "fbk", soll: 3 },
+      ],
+      growth: ["Weiterbildung im Personalmanagement", "Spezialisierung auf Personalentwicklung", "Qualifizierung in HR-Analytics"],
+      pflicht: ["P04", "P05"],
+    },
+    {
+      id: "einkauf",
+      name: "Mitarbeiter/in Materialeinkauf",
+      dept: "Einkauf / Materialwirtschaft",
+      lead: "Geschäftsführung / Bereichsleitung",
+      match: "einkauf|beschaffung|lieferant",
+      mission: "Wirtschaftliche und bedarfsgerechte Materialbeschaffung sicherstellen.",
+      tasks: ["Bedarf ermitteln und Bestellungen planen", "Angebote einholen und vergleichen", "Mit Lieferanten kommunizieren", "Beschaffungsprozesse optimieren"],
+      core: [
+        { name: "Einkaufsmanagement", soll: 3 },
+        { name: "Verhandlungsgeschick", skill: "praes", soll: 3 },
+        { name: "Wirtschaftliches Denken", soll: 3 },
+        { name: "Lieferantenmanagement", soll: 3 },
+        { name: "Organisationsfähigkeit", skill: "orga", soll: 3 },
+        { name: "Digitale Kompetenz", soll: 3 },
+        { name: "Kommunikation", soll: 3 },
+        { name: "Vertragskenntnisse", soll: 2 },
+      ],
+      growth: ["Weiterbildung im strategischen Einkauf", "Spezialisierung auf Vergaberecht", "Entwicklung zur Einkaufsleitung"],
+      pflicht: ["P04", "P05"],
+    },
+  ] as RoleProfile[],
+};
+
+/** Fortbildungsangebote des Kreisverbands (F01 bis F15), mit dem Skill, auf den sie einzahlen. */
+export const CATALOG: { id: string; title: string; target: string; duration: string; turnus: string; skill: string }[] = [
+  { id: "F01", title: "Kommunikation in schwierigen Einsatzsituationen", target: "Rettungsdienst, Wachenleitung", duration: "1 Tag", turnus: "alle 2 Jahre", skill: "praes" },
+  { id: "F02", title: "Traumamanagement Advanced", target: "Notfallsanitäter/innen", duration: "2 Tage", turnus: "alle 2 Jahre", skill: "patient" },
+  { id: "F03", title: "Pädagogik für Praxisanleiter", target: "Praxisanleiter/innen", duration: "2 Tage", turnus: "alle 2 Jahre", skill: "paed" },
+  { id: "F04", title: "Führungskräftetraining", target: "Wachenleitung", duration: "2 Tage", turnus: "alle 2 Jahre", skill: "fuehrung" },
+  { id: "F05", title: "Konfliktmanagement", target: "Wachenleitung, Personaler/innen", duration: "1 Tag", turnus: "alle 2 Jahre", skill: "konflikt" },
+  { id: "F06", title: "Stressbewältigung und Resilienz", target: "Alle Mitarbeitenden", duration: "1 Tag", turnus: "jährlich empfohlen", skill: "resi" },
+  { id: "F07", title: "Personalentwicklung und Mitarbeitergespräche", target: "Personaler/innen, Wachenleitung", duration: "1 Tag", turnus: "alle 2 Jahre", skill: "fbk" },
+  { id: "F08", title: "Warenwirtschaft und Lagerlogistik", target: "Lagermitarbeitende", duration: "2 Tage", turnus: "alle 3 Jahre", skill: "material" },
+  { id: "F09", title: "Strategischer Einkauf", target: "Materialeinkauf", duration: "2 Tage", turnus: "alle 3 Jahre", skill: "" },
+  { id: "F10", title: "Excel und digitale Arbeitsprozesse", target: "Verwaltung, Einkauf", duration: "1 Tag", turnus: "nach Bedarf", skill: "orga" },
+  { id: "F11", title: "Berufliche Orientierung im Rettungsdienst", target: "FSJler/innen, Azubis", duration: "1 Tag", turnus: "jährlich", skill: "lernen" },
+  { id: "F12", title: "Notfallmedizinische Fallbesprechungen", target: "Notfallsanitäter/innen, Rettungssanitäter/innen", duration: "1 Tag", turnus: "jährlich", skill: "notfall" },
+  { id: "F13", title: "Professionelle Gesprächsführung", target: "Alle Mitarbeitenden", duration: "1 Tag", turnus: "alle 2 Jahre", skill: "praes" },
+  { id: "F14", title: "Qualitätsmanagement im Rettungsdienst", target: "Notfallsanitäter/innen, Wachenleitung", duration: "1 Tag", turnus: "alle 2 Jahre", skill: "doku" },
+  { id: "F15", title: "Ausbildung und Anleitung von Nachwuchskräften", target: "Praxisanleiter/innen", duration: "1 Tag", turnus: "jährlich", skill: "paed" },
+];
+
+/** Passende Fortbildung für eine Kompetenzlücke: bevorzugt eine, deren Zielgruppe zur Rolle passt. */
+export function trainingFor(skillId: string, role?: RoleProfile) {
+  const all = CATALOG.filter((c) => c.skill === skillId);
+  const stem = (role?.name || "").split(/[\s/]/)[0].toLowerCase().slice(0, 8);
+  return all.find((c) => stem && c.target.toLowerCase().includes(stem)) ?? all.find((c) => /alle/i.test(c.target)) ?? all[0];
+}
+
 export const METHODS: string[] = [
-  "70/20/10: 70 % lernen wir durch Erfahrung im Job, 20 % durch Austausch und Feedback, 10 % durch formale Formate. Deshalb echte Aufgaben zu Lernanlässen machen.",
+  "70/20/10: 70 % lernen wir durch Erfahrung im Einsatz und im Job, 20 % durch Austausch und Feedback (z. B. Nachbesprechung mit der Crew, Praxisanleitung), 10 % durch formale Formate. Deshalb echte Einsätze und Aufgaben zu Lernanlässen machen.",
   "Growth Mindset (Dweck): Fähigkeiten wachsen durch Anstrengung, gute Strategien und Feedback. Einsatz und Lernfortschritt loben, nicht Talent. Fehler als nächsten Lernschritt formulieren.",
-  "Deliberate Practice: gezielt an einer Schwäche üben, mit sofortigem Feedback, in kurzen fokussierten Einheiten.",
-  "Erfahrungslernen nach Kolb: Erleben, Reflektieren, Verallgemeinern, Ausprobieren. Ohne Reflexion bleibt Erfahrung ungenutzt.",
+  "Deliberate Practice: gezielt an einer Schwäche üben, mit sofortigem Feedback, in kurzen fokussierten Einheiten, z. B. Skills-Training am Phantom.",
+  "Erfahrungslernen nach Kolb: Erleben, Reflektieren, Verallgemeinern, Ausprobieren. Ohne Reflexion (z. B. Debriefing nach dem Einsatz) bleibt Erfahrung ungenutzt.",
   "Feedback nach SBI: Situation, Verhalten (Behavior), Wirkung (Impact). Konkret und beobachtbar statt pauschal.",
-  "Spaced Repetition: Wiederholen in wachsenden Abständen sichert Gelerntes.",
+  "Spaced Repetition: Wiederholen in wachsenden Abständen sichert Gelerntes, gerade bei seltenen, kritischen Maßnahmen.",
   "Selbstbestimmungstheorie: Motivation entsteht durch Autonomie (selbst wählen), Kompetenzerleben (Fortschritt sehen) und Verbundenheit (mit anderen lernen).",
-  "Kleine Schritte: lieber 10 Minuten heute als ein Tag irgendwann. Lernen an konkrete Termine im Kalender koppeln.",
+  "Kleine Schritte: lieber 10 Minuten in einer ruhigen Phase auf der Wache als ein Tag irgendwann. Lernen an konkrete Termine oder Schichten koppeln.",
 ];
 
 export const TEAM = [
-  { name: "Jonas Krüger", role: "Entwickler", initials: "JK" },
-  { name: "Aylin Demir", role: "UX-Designerin", initials: "AD" },
-  { name: "Markus Weber", role: "Teamleiter", initials: "MW" },
+  { name: "Thomas Weber", role: "Wachenleitung", initials: "TW" },
+  { name: "Lisa Schneider", role: "Azubi Notfallsanitäterin", initials: "LS" },
+  { name: "Jonas Wagner", role: "Notfallsanitäter, Praxisanleiter", initials: "JW" },
 ];
 
 export const BADGES: Record<string, { name: string; text: string }> = {
@@ -97,32 +298,38 @@ export const BADGES: Record<string, { name: string; text: string }> = {
   mutig: { name: "Mutig", text: "Eine Aufgabe außerhalb der Komfortzone angepackt" },
 };
 
-export type RoleProfile = (typeof COMPANY.roles)[number];
-
-/** Stellenprofil zur frei eingegebenen Rolle; ohne Treffer das Produktmanagement-Profil (Demo-Persona). */
+/** Jobprofil zur frei eingegebenen Rolle; ohne Treffer Notfallsanitäter/in (Demo-Persona Max Müller). */
 export function roleFor(role?: string): RoleProfile {
   const r = (role || "").toLowerCase();
-  // Produkt zuerst prüfen, damit „Produktmanagerin“ nicht beim Teamleiter landet.
-  return COMPANY.roles.find((x) => new RegExp(x.match, "i").test(r)) ?? COMPANY.roles[0];
+  return COMPANY.roles.find((x) => new RegExp(x.match, "i").test(r)) ?? COMPANY.roles.find((x) => x.id === "notsan")!;
 }
 
-/** Soll-Stufe eines Skills: aus dem Stellenprofil, sonst Demo-Heuristik. */
+/** Soll-Stufe eines Skills: aus dem Jobprofil, sonst die übergreifende Soll-Stufe 2 (im Fokus 3). */
 export function targetLevel(skillId: string, focus: string[], role?: string): number {
   const core = roleFor(role).core.find((c) => c.skill === skillId);
   if (core) return core.soll;
-  return focus.includes(skillId) ? 4 : 3;
+  return focus.includes(skillId) ? 3 : 2;
 }
 
-/** Ist-Stufe eines Skills (0 bis 5) aus dem Fortschritt. */
-export const skillLevel = (sk: Skill) => Math.round(skillProgress(sk) / 20);
+/** Ist-Stufe eines Skills (0 bis 4) aus dem Fortschritt. */
+export const skillLevel = (sk: Skill) => Math.round(skillProgress(sk) / (100 / MAX_LEVEL));
 
-/** Pflichtfortbildungen; Fälligkeit in Tagen ab Start der Demo. */
-export const MANDATORY: { id: string; title: string; meta: string; dueDays: number; desc: string; duration: string; last: string }[] = [
-  { id: "arbeitsschutz", title: "Unterweisung Arbeitsschutz", meta: "jährlich · 20 min", dueDays: 12, duration: "20 min", last: "Dez. 2025", desc: "Die jährliche Pflichtunterweisung: Gefahren am Arbeitsplatz, Verhalten im Notfall, Erste Hilfe. Mit kurzem Abschlusstest." },
-  { id: "infosec", title: "Informationssicherheit", meta: "jährlich · 30 min", dueDays: 26, duration: "30 min", last: "Jan. 2026", desc: "Phishing erkennen, sichere Passwörter, Umgang mit vertraulichen Daten. Mit Quiz am Ende." },
-  { id: "dsgvo", title: "Datenschutz (DSGVO)", meta: "alle 2 Jahre · 25 min", dueDays: -40, duration: "25 min", last: "Okt. 2026", desc: "Grundlagen der DSGVO und was sie für deinen Arbeitsalltag bedeuten." },
-  { id: "compliance", title: "Verhaltenskodex und Compliance", meta: "jährlich · 15 min", dueDays: -75, duration: "15 min", last: "Sept. 2026", desc: "Unser Verhaltenskodex in Beispielen: Geschenke, Interessenkonflikte, Fairness." },
+/** Jährliche Pflichtschulungen P01 bis P05. Fälligkeit in Tagen ab Start der Demo (negativ = abgelaufen). */
+export const MANDATORY: { id: string; title: string; meta: string; dueDays: number; desc: string; duration: string; last: string; format: string }[] = [
+  { id: "P01", title: "Reanimationskurs", meta: "jährlich · 4 Stunden", dueDays: 74, duration: "4 Std.", last: "Feb. 2026", format: "Präsenz", desc: "Reanimation, CPR und AED nach aktuellen Leitlinien. Nächster Termin im Februar, Nachholtermin im September." },
+  { id: "P02", title: "Hygieneschulung", meta: "jährlich · 2 Stunden", dueDays: 110, duration: "2 Std.", last: "März 2026", format: "Präsenz", desc: "Infektionsprävention, Händehygiene und Schutzkleidung im Einsatz und auf der Wache." },
+  { id: "P03", title: "Fahrsicherheitstraining", meta: "jährlich · 1 Tag", dueDays: -21, duration: "1 Tag", last: "Juni 2025", format: "Präsenz", desc: "Sicheres Fahren, Einsatzfahrten mit Sonderrechten und Gefahrensituationen. Dein letzter Nachweis ist abgelaufen, die Wachenleitung ist informiert." },
+  { id: "P04", title: "Datenschutz", meta: "jährlich · 2 Stunden", dueDays: 42, duration: "2 Std.", last: "Jan. 2026", format: "E-Learning", desc: "DSGVO, Umgang mit Patientendaten und Schweigepflicht. Mit kurzem Abschlusstest." },
+  { id: "P05", title: "Brandschutz", meta: "jährlich · 2 Stunden", dueDays: 135, duration: "2 Std.", last: "Apr. 2026", format: "Präsenz", desc: "Brandverhütung, Verhalten im Brandfall und Umgang mit dem Feuerlöscher." },
 ];
+/** Gültige Nachweise der Demo-Persona: alles außer dem Fahrsicherheitstraining. */
+export const MANDATORY_DONE_DEFAULT = ["P01", "P02", "P04", "P05"];
+
+/** Pflichtschulungen, die dem Jobprofil zugeordnet sind. */
+export const mandatoryFor = (role?: string) => {
+  const ids = roleFor(role).pflicht;
+  return MANDATORY.filter((m) => ids.includes(m.id));
+};
 
 /* ---------- Persönliche Ziele: Lernpfad mit Challenges ---------- */
 
@@ -133,65 +340,87 @@ export const CHALLENGE_XP: Record<ChallengeKind, number> = { Lernen: 30, Üben: 
 
 const ch = (id: string, area: string, title: string, kind: ChallengeKind, min: number, text: string): Challenge => ({ id, area, title, kind, min, text });
 
-/** Zwei Demo-Pfade: Konflikte (Standard) und Präsentieren. Gewählt nach dem Lernziel aus dem Onboarding. */
-export const GOAL_PATHS: Record<"konflikt" | "praes", { title: string; challenges: Challenge[] }> = {
-  konflikt: {
-    title: "Wie gehe ich mit Konfliktsituationen um?",
-    challenges: [
-      ch("k1", "fach", "Konfliktstufen nach Glasl", "Lernen", 15, "Neun Stufen, an denen du erkennst, wie weit ein Konflikt schon ist."),
-      ch("k2", "komm", "Ich-Botschaften üben", "Üben", 10, "Sag, was du wahrnimmst und was du brauchst, ohne Vorwurf."),
-      ch("k3", "fach", "Interessen statt Positionen", "Lernen", 15, "Frag nach dem Warum hinter einer Forderung."),
-      ch("k4", "meth", "Gespräch mit Leitfaden strukturieren", "Anwenden", 20, "Ein klarer Ablauf nimmt Druck raus. Probier ihn im nächsten Gespräch aus."),
-      ch("k5", "komm", "Feedback nach SBI", "Lernen", 30, "Situation, Verhalten, Wirkung: Feedback, das ankommt."),
-      ch("k6", "fach", "Konflikttypen im Team erkennen", "Lernen", 20, "Sach-, Beziehungs- oder Rollenkonflikt? Die Art bestimmt den Weg."),
-      ch("k7", "komm", "Schwieriges Gespräch simulieren", "Üben", 15, "Übe mit Kompass ein Gespräch, bei dem es hakt."),
-      ch("k8", "meth", "Hitzige Runde moderieren", "Anwenden", 30, "Bring eine Runde zurück zur Sache, wenn es laut wird."),
-      ch("k9", "komm", "Klärungsgespräch führen", "Anwenden", 30, "Führe das Gespräch, das du schon länger vor dir herschiebst."),
-      ch("k10", "meth", "Reflexion nach dem Gespräch", "Reflexion", 10, "Was lief gut, was nimmst du mit?"),
-    ],
-  },
+export type PathKey = "praes" | "trauma" | "resi";
+
+/** Drei Demo-Pfade, gewählt nach dem Lernziel aus dem Onboarding: Fallvorstellung, Traumaversorgung, Belastbarkeit (Standard). */
+export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[] }> = {
   praes: {
     title: "",
     challenges: [
-      ch("p1", "fach", "Storyline nach dem Pyramidenprinzip", "Lernen", 15, "Die Kernaussage zuerst, dann die Argumente."),
-      ch("p2", "komm", "Einstieg in 30 Sekunden", "Üben", 10, "Ein Satz, der die Runde sofort abholt."),
-      ch("p3", "fach", "Zahlen anschaulich zeigen", "Lernen", 15, "Eine Folie, eine Aussage, eine Zahl."),
-      ch("p4", "meth", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass Kompass Feedback geben."),
-      ch("p5", "komm", "Mit Fragen souverän umgehen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
-      ch("p6", "fach", "Roadmap-Folie schärfen", "Anwenden", 20, "Weniger Punkte, klarere Prioritäten."),
+      ch("p1", "fach", "Fall nach cABCDE aufbereiten", "Lernen", 15, "Ordne den Einsatz entlang cABCDE, bevor du Folien baust."),
+      ch("p2", "komm", "Einstieg in 30 Sekunden", "Üben", 10, "Ein Satz, der die Runde sofort an die Einsatzstelle holt."),
+      ch("p3", "meth", "Einsatzprotokoll als Quelle", "Lernen", 15, "Zeitstrahl und Befunde aus der Doku, vollständig anonymisiert."),
+      ch("p4", "komm", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass Kompass Feedback geben."),
+      ch("p5", "komm", "Souverän mit Rückfragen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
+      ch("p6", "fach", "Leitlinienbezug herstellen", "Anwenden", 20, "Zeig, wo du dich an der Leitlinie orientiert hast und warum."),
       ch("p7", "komm", "Stimme und Pausen", "Üben", 10, "Pausen wirken sicherer als schnelle Sätze."),
-      ch("p8", "meth", "Präsentation halten", "Anwenden", 30, "Der echte Termin. Du bist vorbereitet."),
+      ch("p8", "meth", "Fall in der Fallbesprechung vorstellen", "Anwenden", 30, "Der echte Termin (F12). Du bist vorbereitet."),
       ch("p9", "komm", "Feedback einholen", "Anwenden", 15, "Frag zwei Kolleg/innen, was hängen blieb."),
-      ch("p10", "meth", "Reflexion danach", "Reflexion", 10, "Was nimmst du für die nächste Runde mit?"),
+      ch("p10", "selbst", "Reflexion danach", "Reflexion", 10, "Was nimmst du für die nächste Fallvorstellung mit?"),
+    ],
+  },
+  trauma: {
+    title: "Traumaversorgung sicher nach cABCDE",
+    challenges: [
+      ch("t1", "fach", "cABCDE-Schema auffrischen", "Lernen", 15, "Die Reihenfolge, die in jedem Traumaeinsatz trägt."),
+      ch("t2", "fach", "Blutungskontrolle am Phantom", "Üben", 15, "Tourniquet und Beckenschlinge, bis jeder Handgriff sitzt."),
+      ch("t3", "meth", "Fallbeispiel durchspielen", "Üben", 20, "Kompass spielt einen Einsatz mit dir durch, du entscheidest Schritt für Schritt."),
+      ch("t4", "komm", "Closed-Loop im Team", "Üben", 10, "Ansage, Wiederholen, Bestätigen: klare Kommunikation unter Druck."),
+      ch("t5", "fach", "Für F02 anmelden", "Anwenden", 10, "Traumamanagement Advanced, 2 Tage. Sprich den Termin mit der Wachenleitung ab."),
+      ch("t6", "meth", "Debriefing nach dem Einsatz", "Reflexion", 10, "Drei Fragen mit der Crew: Was lief gut, was nicht, was ändern wir?"),
+      ch("t7", "komm", "Übergabe nach SINNHAFT", "Üben", 10, "Strukturierte Übergabe im Schockraum, in unter einer Minute."),
+      ch("t8", "fach", "Fall in die Fallbesprechung einbringen", "Anwenden", 30, "Teile einen Traumaeinsatz in der Fallbesprechung (F12)."),
+      ch("t9", "meth", "Nächsten Traumaeinsatz bewusst führen", "Anwenden", 30, "Nutze das Schema und achte auf deine Ansagen."),
+      ch("t10", "selbst", "Reflexion: Was sitzt jetzt?", "Reflexion", 10, "Wo stehst du in der Patientenversorgung, was fehlt noch?"),
+    ],
+  },
+  resi: {
+    title: "Nach belastenden Einsätzen stabil bleiben",
+    challenges: [
+      ch("r1", "selbst", "Stressreaktionen verstehen", "Lernen", 15, "Was Körper und Kopf nach einem schweren Einsatz machen, ist normal."),
+      ch("r2", "selbst", "Atemtechnik für die Anfahrt", "Üben", 5, "4 Sekunden ein, 6 aus. Probier es auf der nächsten Anfahrt."),
+      ch("r3", "komm", "Mit der Crew nachbesprechen", "Anwenden", 15, "Nach einem belastenden Einsatz kurz gemeinsam sortieren."),
+      ch("r4", "meth", "Ritual zum Schichtende", "Üben", 10, "Ein kleiner Ablauf, der den Dienst bewusst abschließt."),
+      ch("r5", "selbst", "Für F06 anmelden", "Anwenden", 10, "Stressbewältigung und Resilienz, 1 Tag, jährlich empfohlen."),
+      ch("r6", "komm", "Ansprechpartner kennen", "Lernen", 10, "Wer im Kreisverband bei der Einsatznachsorge (PSNV) hilft."),
+      ch("r7", "selbst", "Erholung im Schichtplan", "Anwenden", 15, "Plane bewusst freie Zeit nach Nachtdiensten ein."),
+      ch("r8", "komm", "Grenzen ansprechen", "Anwenden", 20, "Sag im Team, wenn ein Einsatz dich noch beschäftigt."),
+      ch("r9", "meth", "Wochencheck Belastung", "Reflexion", 5, "Eine Minute: Wie voll ist dein Akku gerade?"),
+      ch("r10", "selbst", "Reflexion nach 4 Wochen", "Reflexion", 10, "Was hilft dir wirklich, was nimmst du mit?"),
     ],
   },
 };
 
-export const goalPathKey = (goal?: string): "konflikt" | "praes" => (/präsent|praesent|vortrag|vorstell|roadmap|pitch|rede/i.test(goal || "") ? "praes" : "konflikt");
-export const PATH_DONE_DEFAULT = (key: "konflikt" | "praes") => GOAL_PATHS[key].challenges.slice(0, 3).map((c) => c.id);
+export const goalPathKey = (goal?: string): PathKey => {
+  const g = goal || "";
+  if (/präsent|praesent|vortrag|vorstell|fallbesprech|fallvorstell|pitch|rede/i.test(g)) return "praes";
+  if (/trauma|abcde|polytrauma|patientenversorg|versorgung|blutung/i.test(g)) return "trauma";
+  return "resi";
+};
+export const PATH_DONE_DEFAULT = (key: PathKey) => GOAL_PATHS[key].challenges.slice(0, 3).map((c) => c.id);
 
-/** Weitere (zugeklappte) Ziele der Demo-Persona. */
+/** Weitere (zugeklappte) Ziele der Demo-Persona, abgeleitet aus der Kompetenzbewertung. */
 export const OTHER_GOALS: { id: string; title: string; status: "pausiert" | "erreicht"; meta: string; done: number; total: number; color: string; text: string }[] = [
-  { id: "daten", title: "Mit Daten überzeugen", status: "pausiert", meta: "pausiert · 2 von 8", done: 2, total: 8, color: "#E9B949", text: "Pausiert, solange du an deinem aktuellen Ziel arbeitest." },
-  { id: "praesentieren", title: "Sicher vor großen Runden präsentieren", status: "erreicht", meta: "erreicht · Oktober", done: 8, total: 8, color: "#7FB5A3", text: "Alle 8 Challenges geschafft. Stark." },
+  { id: "belastbarkeit", title: "Belastbarkeit stärken", status: "pausiert", meta: "pausiert · 2 von 10", done: 2, total: 10, color: "#E3907D", text: "Belastbarkeit Ist 2, Soll 3. Pausiert, solange du an deinem aktuellen Ziel arbeitest. Passend: F06 Stressbewältigung und Resilienz." },
+  { id: "doku", title: "Digitale Einsatzdokumentation", status: "erreicht", meta: "erreicht · September", done: 8, total: 8, color: "#7C9CD6", text: "Dokumentation steht auf Stufe 3, eine über dem Soll. Stark." },
 ];
 
 /* ---------- Stellenprofil: Jahresziele und SOPs ---------- */
 
 export const YEAR_GOALS: { id: string; title: string; meta: string; color: string }[] = [
-  { id: "roadmap", title: "Roadmap-Planung für Q1 übernehmen", meta: "bis März · mit Markus Weber vereinbart", color: "#7C9CD6" },
-  { id: "konflikt", title: "Konflikte im Team früh ansprechen", meta: "Teil deines aktuellen Ziels", color: "#E3907D" },
+  { id: "trauma", title: "Patientenversorgung auf Stufe 4: Traumamanagement Advanced (F02)", meta: "bis Juni · mit Thomas Weber vereinbart", color: "#7FB5A3" },
+  { id: "p03", title: "Fahrsicherheitstraining (P03) nachholen", meta: "abgelaufen · Termin im Januar", color: "#E3907D" },
+  { id: "praxisanleitung", title: "Erste Schritte Richtung Praxisanleitung", meta: "Perspektive aus dem Gespräch", color: "#B58BC9" },
 ];
 
 export const SOPS: { id: string; title: string; version: string; changed: string; summary: string; readDefault?: boolean }[] = [
-  { id: "release", title: "Release-Freigabe", version: "3.2", changed: "20. Nov.", summary: "Neu: Freigaben brauchen zusätzlich ein Okay aus dem Support. Die Checkliste hat dafür einen eigenen Schritt." },
-  { id: "anforderungen", title: "Anforderungen dokumentieren", version: "2.0", changed: "2. Okt.", summary: "Anforderungen stehen jetzt als User Stories mit Akzeptanzkriterien im Board.", readDefault: true },
+  { id: "hygiene", title: "Hygieneplan Rettungswache", version: "4.1", changed: "20. Nov.", summary: "Neu: Nach jedem Infektionstransport wird die Desinfektion von Trage und Patientenraum auf der Checkliste im Fahrzeug abgezeichnet." },
+  { id: "uebergabe", title: "Patientenübergabe in der Notaufnahme", version: "2.0", changed: "2. Okt.", summary: "Übergaben folgen jetzt einheitlich dem SINNHAFT-Schema, das Protokoll geht digital vorab an die Klinik.", readDefault: true },
 ];
-export const MANDATORY_DONE_DEFAULT = ["dsgvo", "compliance"];
 
 /** Feste Demo-Termine; Tage ab Start der Demo, Uhrzeit. */
 export const FIXED_DATES: { id: string; title: string; sub: string; days: number; hour: number }[] = [
-  { id: "jg", title: "Entwicklungsgespräch", sub: "mit Markus Weber", days: 19, hour: 10 },
+  { id: "jg", title: "Entwicklungsgespräch", sub: "mit Thomas Weber", days: 19, hour: 10 },
 ];
 
 const r = (id: string, type: Rec["type"], title: string, meta: string): Rec => ({ id, type, title, meta });
@@ -203,160 +432,203 @@ const s = (id: string, name: string, subs: [string, string, number][], recs: Rec
   recs,
 });
 
+/**
+ * Kompetenzen der Demo-Persona Max Müller (Notfallsanitäter, 5 Jahre im Kreisverband).
+ * Stufen 1 bis 4 wie im Kompetenzmodell; die Skill-Stufen entsprechen der Kompetenzbewertung:
+ * Fachwissen 4, Patientenversorgung 3, Kommunikation 3, Belastbarkeit 2, Dokumentation 3, Teamfähigkeit 3.
+ */
 export function initialAreas(): Area[] {
   return [
     {
-      id: "komm",
-      name: "Kommunikation",
-      color: "#E9B949",
-      skills: [
-        s(
-          "praes",
-          "Präsentieren",
-          [
-            ["struktur", "Struktur und roter Faden", 4],
-            ["folien", "Folien gestalten", 4],
-            ["story", "Storytelling mit Daten", 2],
-            ["koerper", "Körpersprache und Stimme", 2],
-            ["fragen", "Umgang mit Fragen", 1],
-          ],
-          [
-            r("p4", "Üben", "Generalprobe mit Video", "10 min"),
-            r("p1", "Intern", "Storytelling mit Daten", "1 Tag"),
-            r("p2", "Ressource", "Folienvorlage und Leitfaden", "15 min"),
-            r("p3", "Intern", "Grundlagen der Präsentationsstruktur", "12 min"),
-          ],
-        ),
-        s(
-          "mod",
-          "Moderation",
-          [
-            ["mvorb", "Meetings vorbereiten", 2],
-            ["mleit", "Diskussionen leiten", 1],
-            ["mkonf", "Mit Konflikten umgehen", 1],
-          ],
-          [r("m1", "Intern", "Workshop „Moderation für Einsteiger“", "Neckartal Academy · 1 Tag")],
-        ),
-        s(
-          "fb",
-          "Feedback geben",
-          [
-            ["sbi", "Konkret nach SBI", 3],
-            ["fannehmen", "Feedback annehmen", 3],
-            ["fkultur", "Feedbackkultur im Team", 2],
-          ],
-          [r("f1", "Intern", "E-Learning „Feedback nach dem SBI-Modell“", "30 Minuten")],
-        ),
-      ],
-    },
-    {
       id: "fach",
-      name: "Fachwissen",
+      name: "Fachkompetenz",
       color: "#7FB5A3",
       skills: [
         s(
-          "wp",
-          "Wärmepumpen-Technik",
+          "notfall",
+          "Notfallmedizinisches Fachwissen",
           [
-            ["wgrund", "Funktionsprinzip", 3],
-            ["wsteu", "Regelung und Steuerung", 2],
-            ["wnorm", "Normen und Förderung", 1],
+            ["leitlinien", "Aktuelle Leitlinien", 4],
+            ["pharma", "Medikamente und Dosierungen", 4],
+            ["krankheit", "Krankheitsbilder erkennen", 3],
           ],
-          [r("w1", "Intern", "Schulung „Wärmepumpe kompakt“", "4 Stunden")],
+          [r("n1", "Intern", "F12 Notfallmedizinische Fallbesprechungen", "1 Tag")],
         ),
         s(
-          "markt",
-          "Energiemarkt",
+          "patient",
+          "Patientenversorgung",
           [
-            ["mfoer", "Förderlandschaft", 4],
-            ["mwett", "Wettbewerb", 3],
-            ["mtrend", "Trends", 3],
+            ["abcde", "Untersuchung nach ABCDE", 4],
+            ["trauma", "Traumaversorgung", 2],
+            ["kinder", "Kindernotfälle", 3],
+            ["invasiv", "Invasive Maßnahmen", 3],
           ],
-          [r("e1", "Ressource", "Marktreport „Wärmepumpen 2027“", "20 min")],
+          [r("pv1", "Intern", "F02 Traumamanagement Advanced", "2 Tage"), r("pv2", "Üben", "Blutungskontrolle am Phantom", "15 min")],
         ),
         s(
-          "pm",
-          "Produktmanagement",
+          "material",
+          "Fahrzeug- und Materialkunde",
           [
-            ["disc", "Product Discovery", 3],
-            ["road", "Roadmapping", 3],
-            ["kpi", "Kennzahlen", 2],
+            ["mpg", "Medizinprodukte", 3],
+            ["rtwcheck", "Fahrzeugcheck RTW", 3],
+            ["fahren", "Sicher im Einsatz fahren", 2],
           ],
-          [r("pm1", "Intern", "Workshop „Produktkennzahlen und OKRs“", "Neckartal Academy · 1 Tag")],
+          [r("ma1", "Intern", "P03 Fahrsicherheitstraining", "1 Tag")],
         ),
       ],
     },
     {
       id: "meth",
-      name: "Methoden",
+      name: "Methodenkompetenz",
       color: "#7C9CD6",
       skills: [
         s(
-          "agil",
-          "Agiles Arbeiten",
+          "doku",
+          "Dokumentation",
           [
-            ["scrum", "Scrum", 4],
-            ["kanban", "Kanban", 3],
-            ["retro", "Retrospektiven", 3],
+            ["protokoll", "Einsatzprotokoll", 3],
+            ["digital", "Digitale Dokumentation", 3],
+            ["dsgvo", "Datenschutz bei Patientendaten", 3],
           ],
-          [r("a1", "Ressource", "Leitfaden „Retrospektiven, die wirken“", "15 min")],
+          [r("d1", "Intern", "F14 Qualitätsmanagement im Rettungsdienst", "1 Tag")],
         ),
         s(
-          "daten",
-          "Datenanalyse",
+          "entscheid",
+          "Entscheidungsfähigkeit",
           [
-            ["sql", "SQL", 1],
-            ["dash", "Dashboards", 2],
-            ["stat", "Statistik-Grundlagen", 1],
+            ["lage", "Lage schnell einschätzen", 3],
+            ["prio", "Prioritäten im Einsatz", 3],
+            ["ziel", "Transportziel und Nachforderung", 2],
           ],
-          [r("d1", "Intern", "Lernpfad „SQL für Produktleute“", "6 × 1 Stunde")],
+          [r("e1", "Üben", "Fallbeispiel mit Kompass durchspielen", "20 min")],
         ),
         s(
-          "ux",
-          "Nutzerforschung",
+          "orga",
+          "Organisationsfähigkeit",
           [
-            ["interv", "Interviews", 3],
-            ["tests", "Usability-Tests", 2],
-            ["synth", "Synthese", 2],
+            ["abl", "Abläufe planen", 2],
+            ["selborg", "Selbstorganisation im Schichtdienst", 2],
+            ["digi", "Digitale Grundkompetenz", 3],
           ],
-          [r("u1", "Intern", "Hospitation bei den Usability-Tests im UX-Team", "2 Stunden")],
+          [r("o1", "Intern", "F10 Excel und digitale Arbeitsprozesse", "1 Tag")],
+        ),
+      ],
+    },
+    {
+      id: "komm",
+      name: "Sozialkompetenz",
+      color: "#E9B949",
+      skills: [
+        s(
+          "praes",
+          "Kommunikation",
+          [
+            ["struktur", "Fall strukturiert vorstellen", 3],
+            ["folien", "Folien und Visualisierung", 2],
+            ["story", "Anschaulich erzählen", 3],
+            ["koerper", "Auftreten und Stimme", 3],
+            ["fragen", "Umgang mit Rückfragen", 2],
+          ],
+          [
+            r("p4", "Üben", "Generalprobe mit Video", "10 min"),
+            r("p1", "Intern", "F13 Professionelle Gesprächsführung", "1 Tag"),
+            r("p2", "Ressource", "Vorlage Fallvorstellung der Wache", "15 min"),
+            r("p3", "Intern", "F01 Kommunikation in schwierigen Einsatzsituationen", "1 Tag"),
+          ],
+        ),
+        s(
+          "team",
+          "Teamfähigkeit",
+          [
+            ["crm", "Crew Resource Management", 3],
+            ["absprache", "Klare Absprachen im Einsatz", 3],
+            ["unterst", "Kolleg/innen unterstützen", 3],
+          ],
+          [r("tm1", "Ressource", "Leitfaden Debriefing nach dem Einsatz", "10 min")],
+        ),
+        s(
+          "konflikt",
+          "Konfliktmanagement",
+          [
+            ["deeskal", "Deeskalation im Einsatz", 2],
+            ["konfteam", "Konflikte im Team ansprechen", 1],
+            ["kfb", "Kritik sachlich äußern", 2],
+          ],
+          [r("k1", "Intern", "F05 Konfliktmanagement", "1 Tag")],
         ),
       ],
     },
     {
       id: "selbst",
-      name: "Selbstführung",
+      name: "Selbstkompetenz",
       color: "#E3907D",
       skills: [
         s(
-          "zeit",
-          "Zeitmanagement",
+          "resi",
+          "Belastbarkeit",
           [
-            ["prio", "Prioritäten setzen", 3],
-            ["fokus", "Fokuszeiten", 3],
-            ["nein", "Nein sagen", 2],
+            ["stress", "Mit Druck im Einsatz umgehen", 2],
+            ["verarbeiten", "Belastende Einsätze verarbeiten", 1],
+            ["erholung", "Erholung im Schichtdienst", 2],
           ],
-          [r("z1", "Ressource", "Methode „Eisenhower-Matrix“ mit Vorlage", "10 min")],
+          [r("rs1", "Intern", "F06 Stressbewältigung und Resilienz", "1 Tag")],
         ),
         s(
-          "resi",
-          "Resilienz",
+          "verantw",
+          "Verantwortungsbewusstsein",
           [
-            ["pausen", "Pausen und Erholung", 2],
-            ["stress", "Mit Druck umgehen", 2],
-            ["energie", "Energie-Management", 1],
+            ["sorgfalt", "Sorgfalt und Hygiene", 3],
+            ["nachweise", "Pflichtschulungen im Blick", 2],
+            ["eigenschutz", "Eigenschutz", 4],
           ],
-          [r("r1", "Intern", "Workshop „Resilienz im Arbeitsalltag“", "3 Stunden · mit der Betriebskrankenkasse")],
+          [r("v1", "Ressource", "Hygieneplan Rettungswache, Version 4.1", "10 min")],
         ),
         s(
           "lernen",
-          "Lernen lernen",
+          "Lernbereitschaft",
           [
             ["ziele", "Lernziele setzen", 2],
-            ["reflex", "Reflektieren", 2],
+            ["reflex", "Einsätze reflektieren", 3],
             ["routine", "Lernroutine", 2],
           ],
-          [r("l1", "Ressource", "Vorlage „Wochenreflexion in 5 Minuten“", "5 min")],
+          [r("l1", "Ressource", "Vorlage Wochenreflexion in 5 Minuten", "5 min")],
+        ),
+      ],
+    },
+    {
+      id: "fuehr",
+      name: "Führungskompetenz",
+      color: "#B58BC9",
+      skills: [
+        s(
+          "paed",
+          "Pädagogische Kompetenz",
+          [
+            ["anleiten", "Praxisanleitung planen", 1],
+            ["zeigen", "Maßnahmen erklären und zeigen", 2],
+            ["bewerten", "Lernfortschritt einschätzen", 1],
+          ],
+          [r("pd1", "Intern", "F03 Pädagogik für Praxisanleiter", "2 Tage")],
+        ),
+        s(
+          "fbk",
+          "Feedbackkompetenz",
+          [
+            ["sbi", "Konkret nach SBI", 2],
+            ["annehmen", "Feedback annehmen", 3],
+            ["gespraech", "Feedbackgespräche führen", 1],
+          ],
+          [r("fb1", "Ressource", "Feedback nach dem SBI-Modell", "30 min")],
+        ),
+        s(
+          "fuehrung",
+          "Führung im Einsatz",
+          [
+            ["anweisen", "Einsatzteam anleiten", 2],
+            ["vertreten", "Entscheidungen vertreten", 2],
+            ["entwickeln", "Andere entwickeln", 1],
+          ],
+          [r("fu1", "Intern", "F15 Ausbildung und Anleitung von Nachwuchskräften", "1 Tag")],
         ),
       ],
     },
@@ -365,7 +637,7 @@ export function initialAreas(): Area[] {
 
 export function skillProgress(skill: Skill): number {
   const sum = skill.subs.reduce((a, b) => a + b.level, 0);
-  return Math.round((sum / (5 * skill.subs.length)) * 100);
+  return Math.round((sum / (MAX_LEVEL * skill.subs.length)) * 100);
 }
 
 export function areaProgress(area: Area): number {
@@ -398,22 +670,23 @@ export function initialState(username: string): AppState {
       {
         id: "seed1",
         date: new Date(now - 14 * day).toISOString(),
-        title: "Workshop „Folien gestalten“ abgeschlossen",
-        kind: "Lernen",
-        xp: 120,
+        title: "Polytrauma-Einsatz mit der Crew nachbesprochen",
+        detail: "Teilkompetenz Einsätze reflektieren bestätigt",
+        kind: "Reflexion",
+        xp: 60,
       },
       {
         id: "seed2",
         date: new Date(now - 21 * day).toISOString(),
-        title: "Projekt-Update im Team-Weekly vorgestellt",
-        detail: "Teilkompetenz Struktur und roter Faden bestätigt",
+        title: "Azubi Lisa beim Zugang legen angeleitet",
+        detail: "Teilkompetenz Maßnahmen erklären und zeigen",
         kind: "Anwenden",
         xp: 60,
       },
       {
         id: "seed3",
         date: new Date(now - 28 * day).toISOString(),
-        title: "Artikel zur Pyramiden-Struktur gelesen",
+        title: "S3-Leitlinie Polytrauma quergelesen",
         kind: "Lernen",
         xp: 15,
       },
@@ -428,22 +701,32 @@ export function initialState(username: string): AppState {
   };
 }
 
-/** Stable knowledge block for the system prompt (cached). */
-export function knowledgeText(): string {
-  const model = initialAreas()
-    .map(
-      (a) =>
-        `- Kompetenzbereich ${a.name}: ` +
-        a.skills.map((sk) => `${sk.name} [${sk.id}] (Teilkompetenzen: ${sk.subs.map((x) => `${x.name} [${x.id}]`).join(", ")})`).join("; "),
-    )
-    .join("\n");
-  return [
-    `# Unternehmen\n${COMPANY.name}: ${COMPANY.about}\nVision: ${COMPANY.vision}\nZiele: ${COMPANY.goals.join("; ")}\nWerte: ${COMPANY.values.join(", ")}`,
-    `# Rollen mit Soll-Profil\n${COMPANY.roles.map((ro) => `- ${ro.name}: ${ro.core.map((c) => `${c.skill} Soll ${c.soll}/5`).join(", ")}`).join("\n")}`,
-    `# Pflichtfortbildungen\n${MANDATORY.map((m) => `- ${m.title} (${m.meta})`).join("\n")}`,
-    `# Kompetenzmodell (Kompetenzbereiche > Skills [ID] > Teilkompetenzen [ID], Stufen 0 bis 5)\n${model}`,
-    `# Fortbildungskatalog (nur diese internen Angebote nennen)\n${CATALOG.map((c) => `- ${c.title} (${c.type}, ${c.duration})`).join("\n")}`,
-    `# Lernmethoden und Motivation\n${METHODS.map((m) => `- ${m}`).join("\n")}`,
-    `# Team der Nutzerin bzw. des Nutzers (jede Person hat einen eigenen Kompass-Assistenten)\n${TEAM.map((t) => `- ${t.name}, ${t.role}`).join("\n")}`,
-  ].join("\n\n");
+/** Unternehmenskontext kompakt als JSON für den System-Prompt (gecacht). */
+export function knowledgeJSON(): string {
+  const pflichtRoles = (id: string) => COMPANY.roles.filter((r) => r.pflicht.includes(id)).map((r) => r.name);
+  return JSON.stringify({
+    unternehmen: { name: COMPANY.name, profil: COMPANY.about, vision: COMPANY.vision, mission: COMPANY.mission, werte: COMPANY.values },
+    kompetenzmodell: {
+      dimensionen: COMPANY.dimensions,
+      stufen: Object.fromEntries(LEVELS.map((l) => [l.n, `${l.name}: ${l.text}`])),
+      uebergreifend: COMPANY.general,
+    },
+    jobprofile: COMPANY.roles.map((r) => ({
+      name: r.name,
+      abteilung: r.dept,
+      vorgesetzt: r.lead,
+      ziel: r.mission,
+      aufgaben: r.tasks,
+      soll: Object.fromEntries(r.core.map((c) => [c.skill ? `${c.name} [${c.skill}]` : c.name, c.soll])),
+      entwicklung: r.growth,
+      pflichtschulungen: r.pflicht,
+    })),
+    fortbildungen: CATALOG.map((c) => ({ id: c.id, titel: c.title, zielgruppe: c.target, dauer: c.duration, turnus: c.turnus })),
+    pflichtschulungen: MANDATORY.map((m) => ({ id: m.id, titel: m.title, intervall: m.meta, format: m.format, verpflichtend_fuer: pflichtRoles(m.id) })),
+    kompass_skills: initialAreas().map((a) => ({
+      bereich: a.name,
+      skills: a.skills.map((sk) => ({ id: sk.id, name: sk.name, teilkompetenzen: Object.fromEntries(sk.subs.map((x) => [x.id, x.name])) })),
+    })),
+    team: TEAM.map((t) => `${t.name} (${t.role})`),
+  });
 }

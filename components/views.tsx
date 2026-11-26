@@ -8,7 +8,7 @@ import { Card } from "@/components/shadcn/card";
 import { Progress } from "@/components/shadcn/progress";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/shadcn/sheet";
 import { Icon, Ring, ConcentricRings, ITEM, MCard, STAGGER } from "./ui";
-import { areaProgress, BADGES, FIXED_DATES, findSkill, levelOf, MANDATORY, MANDATORY_DONE_DEFAULT, roleFor, skillLevel, skillProgress, targetLevel, TEAM } from "@/lib/knowledge";
+import { areaProgress, BADGES, FIXED_DATES, findSkill, levelOf, MANDATORY, MANDATORY_DONE_DEFAULT, MAX_LEVEL, roleFor, skillLevel, skillProgress, targetLevel, TEAM } from "@/lib/knowledge";
 import type { AppState, Rec, Skill } from "@/lib/types";
 
 const WD_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
@@ -18,7 +18,7 @@ export const longDate = (d: Date) => `${WD_LONG[d.getDay()]}, ${d.getDate()}. ${
 export const recLabel = (t: Rec["type"]) => (t === "Intern" ? "Lernen" : t);
 export const recIcon = (t: Rec["type"]) => (t === "Üben" ? "cam" : t === "Extern" ? "pin" : t === "Ressource" ? "book" : "vid");
 
-/** „Q4-Roadmap der Wärmepumpen-App vor …“ → „Q4-Roadmap“ */
+/** „Fallvorstellung Polytrauma, Fallbesprechung …“ → „Fallvorstellung Polytrauma“ */
 export const shortTopic = (t?: string) => (t || "deine Präsentation").split(/,| vor | der | für /)[0].trim();
 
 export function initials(name: string) {
@@ -147,14 +147,14 @@ export function AreaView({
           </span>
         </div>
         <div className="mut xs" style={{ margin: "2px 0 8px" }}>
-          Soll für {role}: Stufe {soll} von 5
+          Soll für {role}: Stufe {soll} von {MAX_LEVEL}
         </div>
         <div style={{ display: "grid", gap: 7 }}>
           {sk.subs.map((s) => (
             <div key={s.id} className="row between" style={{ fontSize: 11.5 }}>
               <span>{s.name}</span>
-              <span className="dots" aria-label={`Stufe ${s.level} von 5, Soll ${soll}`}>
-                {[1, 2, 3, 4, 5].map((n) => (
+              <span className="dots" aria-label={`Stufe ${s.level} von ${MAX_LEVEL}, Soll ${soll}`}>
+                {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((n) => (
                   <i key={n} className={`${n <= s.level ? "f" : ""} ${n === soll ? "soll" : ""}`} style={n <= s.level ? { background: area.color } : undefined} />
                 ))}
               </span>
@@ -200,7 +200,7 @@ export function SkillUpdateView({ state, onBack }: { state: AppState; onBack: ()
   const before = state.presentation?.pctBefore ?? pct;
   const bySource = (src: string) => {
     const subs = sk.subs.filter((s) => s.sources?.includes(src as never));
-    return subs.length ? Math.round((subs.reduce((a, s) => a + s.level, 0) / (subs.length * 5)) * 100) : 0;
+    return subs.length ? Math.round((subs.reduce((a, s) => a + s.level, 0) / (subs.length * MAX_LEVEL)) * 100) : 0;
   };
   const sources = ["Übung", "Selbst", "Kollegen"].map((s) => ({ name: SOURCE_LABEL[s], v: bySource(s) })).filter((s) => s.v > 0);
   const recs = sk.recs.filter((r) => r.fresh);
@@ -212,7 +212,7 @@ export function SkillUpdateView({ state, onBack }: { state: AppState; onBack: ()
           <Icon name="back" />
         </button>
         <div className="t">
-          Präsentieren
+          {sk.name}
           <small>Lernpfad aktualisiert</small>
         </div>
       </div>

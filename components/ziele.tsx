@@ -15,6 +15,9 @@ import {
   goalPathKey,
   MANDATORY,
   MANDATORY_DONE_DEFAULT,
+  MAX_LEVEL,
+  mandatoryFor,
+  trainingFor,
   OTHER_GOALS,
   PATH_DONE_DEFAULT,
   roleFor,
@@ -70,7 +73,7 @@ export function goalPath(state: AppState, now: Date): GoalPath | null {
   const start = new Date(state.goalSetAt || state.createdAt);
   const week = Math.min(4, Math.max(1, Math.floor((dayStart(now) - dayStart(start)) / (7 * DAY)) + 1));
   return {
-    title: (key === "konflikt" ? set.title : "") || goalText(raw),
+    title: (key !== "praes" ? set.title : "") || goalText(raw),
     week,
     challenges: set.challenges,
     done,
@@ -161,7 +164,7 @@ function collectDates(state: AppState, now: Date): DateItem[] {
   const items: DateItem[] = [];
   const pres = state.presentation;
   if (pres?.at && !pres.followedUp) items.push({ id: "pres", at: new Date(pres.at), title: shortTopic(pres.topic), sub: "Präsentation", kind: "pres" });
-  for (const m of MANDATORY) if (!done.includes(m.id)) items.push({ id: m.id, at: at(m.dueDays), title: m.title, sub: "Frist Pflichtfortbildung", kind: "pflicht", allDay: true });
+  for (const m of mandatoryFor(state.profile?.role)) if (!done.includes(m.id)) items.push({ id: m.id, at: at(m.dueDays), title: m.title, sub: "Frist Pflichtschulung", kind: "pflicht", allDay: true });
   if (state.profile) {
     const g = new Date(dayStart(new Date(state.goalSetAt || state.createdAt)) + 28 * DAY);
     g.setHours(9, 0, 0, 0);
@@ -200,7 +203,8 @@ export function GoalsView({
   const pres = state.presentation;
   const path = goalPath(state, now);
   const done = state.mandatoryDone ?? MANDATORY_DONE_DEFAULT;
-  const open = MANDATORY.filter((m) => !done.includes(m.id));
+  const mine = mandatoryFor(p?.role);
+  const open = mine.filter((m) => !done.includes(m.id));
   const dates = collectDates(state, now).slice(0, 5);
   const role = roleFor(p?.role);
   const base = new Date(state.createdAt);
@@ -208,8 +212,9 @@ export function GoalsView({
   const [otherOpen, setOtherOpen] = useState("");
   const [training, setTraining] = useState("");
   const tr = MANDATORY.find((m) => m.id === training);
-  const onSoll = role.core.filter((c) => {
-    const sk = findSkill(state.areas, c.skill);
+  const rated = role.core.filter((c) => c.skill && findSkill(state.areas, c.skill));
+  const onSoll = rated.filter((c) => {
+    const sk = findSkill(state.areas, c.skill!);
     return sk && skillLevel(sk) >= c.soll;
   }).length;
   const otherGoals = path ? OTHER_GOALS : [];
@@ -313,14 +318,19 @@ export function GoalsView({
         )}
       </MCard>
 
-      {/* Pflichtfortbildungen */}
+      {/* Pflichtschulungen */}
       <Fold
-        title="Pflichtfortbildungen"
-        summary={open.length ? `Nächste Frist: ${open[0].title.replace(/^Unterweisung /, "")}, ${dm(dueOf(open[0].dueDays))}` : "Alles erledigt"}
+        title="Pflichtschulungen"
+        summary={
+          open.length
+            ? `${open[0].title}: ${open[0].dueDays < 0 && dueOf(open[0].dueDays) < now ? "abgelaufen" : `Frist ${dm(dueOf(open[0].dueDays))}`}`
+            : `Alle ${mine.length} gültig`
+        }
         badge={<span className={open.length ? "fold-n" : "fold-n mut"}>{open.length ? `${open.length} offen` : "✓"}</span>}
       >
-        {[...open, ...MANDATORY.filter((m) => done.includes(m.id))].map((m) => {
+        {[...open, ...mine.filter((m) => done.includes(m.id))].map((m) => {
           const ok = done.includes(m.id);
+          const late = !ok && dueOf(m.dueDays) < now;
           return (
             <button key={m.id} className={`li ${ok ? "done" : ""}`} onClick={() => setTraining(m.id)}>
               <span className={`ck sm ${ok ? "a" : "o"}`}>{ok && <Icon name="check" size={12} />}</span>
@@ -328,7 +338,7 @@ export function GoalsView({
                 <b>{m.title}</b>
                 <small>{m.meta}</small>
               </span>
-              <small className={ok ? "mut" : "due"}>{ok ? "erledigt" : `bis ${dm(dueOf(m.dueDays))}`}</small>
+              <small className={ok ? "mut" : "due"}>{ok ? "gültig" : late ? "abgelaufen" : `bis ${dm(dueOf(m.dueDays))}`}</small>
             </button>
           );
         })}
@@ -362,14 +372,14 @@ export function GoalsView({
           <span className="tx">
             <b>Stellenprofil</b>
             <small>
-              {role.name} · {onSoll} von {role.core.length} Skills auf Soll
+              {role.name} · {onSoll} von {rated.length} Kompetenzen auf Soll
             </small>
           </span>
           <Icon name="chev" size={16} />
         </button>
       </MCard>
 
-      <BottomSheet open={!!tr} onClose={() => setTraining("")} title={tr?.title || "Fortbildung"}>
+      <BottomSheet open={!!tr} onClose={() => setTraining("")} title={tr?.title || "Pflichtschulung"}>
         {tr && (
           <MandatoryBody
             m={tr}
@@ -394,9 +404,11 @@ function MandatoryBody({ m, ok, due, now, onGo, onClose }: { m: (typeof MANDATOR
     <>
       <div className="row between">
         <span className="tag" style={{ ["--tc" as string]: "#E3907D" }}>
-          <span style={{ color: "var(--t2)" }}>Pflicht · {m.meta.split(" · ")[0]} · E-Learning</span>
+          <span style={{ color: "var(--t2)" }}>
+            {m.id} · Pflicht · {m.meta.split(" · ")[0]} · {m.format}
+          </span>
         </span>
-        <span className="xp">{ok ? "erledigt" : days > 0 ? `Frist in ${days} Tagen` : days === 0 ? "Frist heute" : "überfällig"}</span>
+        <span className="xp">{ok ? "gültig" : days > 0 ? `Frist in ${days} Tagen` : days === 0 ? "Frist heute" : "abgelaufen"}</span>
       </div>
       <div>
         <b className="sh-t">{m.title}</b>
@@ -410,7 +422,7 @@ function MandatoryBody({ m, ok, due, now, onGo, onClose }: { m: (typeof MANDATOR
           <b>{m.duration}</b>
         </div>
         <div>
-          <small>Frist</small>
+          <small>{ok ? "Gültig bis" : "Frist"}</small>
           <b>{dm(due)}</b>
         </div>
         <div>
@@ -421,7 +433,7 @@ function MandatoryBody({ m, ok, due, now, onGo, onClose }: { m: (typeof MANDATOR
       <div className="row" style={{ gap: 8, marginTop: 2 }}>
         {!ok && (
           <Button className="h-11 flex-1 rounded-full" onClick={onGo}>
-            Zur Fortbildung <Icon name="ext" size={14} />
+            {m.format === "E-Learning" ? "Zum E-Learning" : "Termin buchen"} <Icon name="ext" size={14} />
           </Button>
         )}
         <Button variant="outline" className={`h-11 rounded-full ${ok ? "flex-1" : ""}`} onClick={onClose}>
@@ -565,25 +577,41 @@ export function ProfileView({ state, onBack, onOpenAll, onSopRead }: { state: Ap
         </div>
         <div className="skl">
           {role.core.map((c) => {
-            const sk = findSkill(state.areas, c.skill);
-            if (!sk) return null;
-            const area = state.areas.find((a) => a.skills.some((k) => k.id === c.skill));
+            const sk = c.skill ? findSkill(state.areas, c.skill) : undefined;
+            if (!sk)
+              return (
+                <div key={c.name} className="skl-i">
+                  <div className="row between">
+                    <span className="tag">
+                      <b style={{ color: "var(--t)", fontSize: 13 }}>{c.name}</b>
+                    </span>
+                    <span className="xp">Soll {c.soll} · noch nicht bewertet</span>
+                  </div>
+                </div>
+              );
+            const area = state.areas.find((a) => a.skills.some((k) => k.id === sk.id));
             const ist = skillLevel(sk);
             const gap = c.soll - ist;
+            const fb = gap > 0 ? trainingFor(sk.id, role) : undefined;
             return (
-              <div key={c.skill} className="skl-i">
+              <div key={c.name} className="skl-i">
                 <div className="row between">
                   <span className="tag" style={{ ["--tc" as string]: area?.color }}>
-                    <b style={{ color: "var(--t)", fontSize: 13 }}>{sk.name}</b>
+                    <b style={{ color: "var(--t)", fontSize: 13 }}>{c.name}</b>
                   </span>
                   <span className={`xp ${gap <= 0 ? "ok" : ""}`}>{gap <= 0 ? "auf Soll" : `${gap} ${gap === 1 ? "Stufe" : "Stufen"} offen`}</span>
                 </div>
-                <div className="lvl" aria-label={`Ist ${ist} von 5, Soll ${c.soll}`}>
-                  {[1, 2, 3, 4, 5].map((n) => (
+                <div className="lvl" aria-label={`Ist ${ist} von ${MAX_LEVEL}, Soll ${c.soll}`}>
+                  {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((n) => (
                     <i key={n} className={n === c.soll ? "soll" : ""} style={n <= ist ? { background: area?.color } : undefined} />
                   ))}
                 </div>
-                {gap > 0 && state.focus.includes(c.skill) && <small className="mut xs">Wächst mit deinem aktuellen Ziel</small>}
+                {fb && (
+                  <small className="mut xs">
+                    Vorschlag: {fb.id} {fb.title} · {fb.duration}
+                  </small>
+                )}
+                {gap > 0 && !fb && state.focus.includes(sk.id) && <small className="mut xs">Wächst mit deinem aktuellen Ziel</small>}
               </div>
             );
           })}
@@ -592,6 +620,23 @@ export function ProfileView({ state, onBack, onOpenAll, onSopRead }: { state: Ap
           Alle Kompetenzen
           <Icon name="chev" size={14} />
         </button>
+      </MCard>
+
+      <MCard variants={ITEM}>
+        <div className="row between">
+          <h3 className="sec">Entwicklungswege</h3>
+          <span className="mut xs">{role.dept}</span>
+        </div>
+        <div className="list">
+          {role.growth.map((g) => (
+            <div key={g} className="li">
+              <Icon name="chev" size={14} className="mut" />
+              <span className="tx">
+                <b>{g}</b>
+              </span>
+            </div>
+          ))}
+        </div>
       </MCard>
 
       <MCard variants={ITEM}>

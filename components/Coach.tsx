@@ -12,7 +12,7 @@ import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
 import { fallback, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
-import { BADGES, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
+import { BADGES, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
@@ -20,28 +20,28 @@ type Toast = { id: string; text: string };
 type Tab = "coach" | "ziele" | "team";
 type Reise = { view: "home" | "kompetenzen" | "area" | "update" | "pfad" | "profil"; area: string; skill: string; from?: "home" | "kompetenzen" | "profil" };
 
-const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
+const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation|fallbesprechung|fallvorstellung|fall vorstellen|einsatz vorstellen/i;
 // Reihenfolge als Gesprächsbogen: heute (Rolle, Weg, Spaß/Meiden) → Zukunft (3 Jahre) →
 // was dafür zu lernen ist → erster Meilenstein in 4 Wochen → wie und wann gelernt wird.
 // `q` ist die Rückfall-Formulierung; live formuliert Kompass jede Frage passend zur vorigen Antwort.
 const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; topic: string; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
   // Wer?
   { key: "role", topic: "aktuelle Rolle und Bereich", q: "Welche Rolle hast du aktuell?", chips: [], ph: "Deine Rolle und dein Bereich" },
-  { key: "experience", topic: "bisherige berufliche Stationen, Weg in die Rolle", q: "Wie bist du dahin gekommen, welche Stationen hattest du bisher?", chips: ["3 Jahre Agentur, seit 8 Monaten hier"] },
-  { key: "likes", topic: "was im Berufsalltag Spaß macht und was die Person meidet", q: "Was macht dir im Alltag Spaß, und was meidest du eher?", chips: ["Datenanalysen mag ich, große Präsentationen meide ich."] },
+  { key: "experience", topic: "bisherige berufliche Stationen, Weg in die Rolle", q: "Wie bist du dahin gekommen, welche Stationen hattest du bisher?", chips: ["Erst Rettungssanitäter, seit 5 Jahren Notfallsanitäter hier"] },
+  { key: "likes", topic: "was im Berufsalltag Spaß macht und was die Person meidet", q: "Was macht dir im Alltag Spaß, und was meidest du eher?", chips: ["Akuteinsätze mag ich, Fallvorstellungen vor der Runde meide ich."] },
   // Was?
-  { key: "vision", topic: "wo die Person sich in 3 Jahren sieht", q: "Lass uns nach vorn schauen: Wo siehst du dich in 3 Jahren?", chips: ["Ein eigenes Produktteam leiten"] },
-  { key: "learn", topic: "was die Person dafür lernen möchte", q: "Was möchtest du dafür lernen?", chips: ["Souverän präsentieren und mit Daten überzeugen"] },
-  { key: "goal", topic: "was davon sie in den nächsten 4 Wochen erreichen will", q: "Und was davon willst du in den nächsten 4 Wochen schaffen?", chips: ["Die Q4-Roadmap sicher vorstellen"] },
+  { key: "vision", topic: "wo die Person sich in 3 Jahren sieht", q: "Lass uns nach vorn schauen: Wo siehst du dich in 3 Jahren?", chips: ["Als Praxisanleiter Azubis begleiten"] },
+  { key: "learn", topic: "was die Person dafür lernen möchte", q: "Was möchtest du dafür lernen?", chips: ["Wissen verständlich weitergeben und sicher vorstellen"] },
+  { key: "goal", topic: "was davon sie in den nächsten 4 Wochen erreichen will", q: "Und was davon willst du in den nächsten 4 Wochen schaffen?", chips: ["Meinen Trauma-Einsatz in der Fallbesprechung vorstellen"] },
   // Wie?
   { key: "preference", topic: "wie die Person am besten lernt (Auswahl folgt)", q: "Wie lernst du am besten?", chips: ["Praxis und Üben", "Videos", "Lesen", "Austausch"], multi: true },
-  { key: "time", topic: "wann und wo Lernen in den Alltag passt", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["20 Minuten nach dem Daily", "Auf dem Weg zur Arbeit"] },
+  { key: "time", topic: "wann und wo Lernen in den Alltag passt", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["In ruhigen Phasen auf der Wache", "Nach dem Schichtwechsel"] },
 ];
 const OB_TOTAL = OB_QUESTIONS.length;
 const MAX_FOLLOWUPS = 2;
 const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-const TOPIC_FULL = "Q4-Roadmap der Wärmepumpen-App vor der Bereichsleitung, 15 Minuten";
-const PRESENT_CHIP = "Hey, ich muss morgen die Q4-Roadmap präsentieren.";
+const TOPIC_FULL = "Fallvorstellung Polytrauma, Fallbesprechung der Wache, 15 Minuten";
+const PRESENT_CHIP = "Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen.";
 const CHIPS = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const CHIP = { hidden: { opacity: 0, y: 8, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 420, damping: 28 } } };
 
@@ -232,7 +232,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       for (const c of changes || []) {
         const sub = sk.subs.find((x) => x.id === c.sub);
         if (!sub) continue;
-        const lvl = Math.max(sub.level, Math.min(5, sub.level + 1, Math.round(c.level)));
+        const lvl = Math.max(sub.level, Math.min(MAX_LEVEL, sub.level + 1, Math.round(c.level)));
         if (lvl > sub.level) {
           sub.level = lvl;
           sub.sources = Array.from(new Set([...(sub.sources || []).filter((x) => x !== "Start"), ...sources]));
@@ -303,10 +303,10 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       const asked = phrased || q.q;
       setObStep(i + 1);
       await say(lead ? `${lead} ${asked}` : asked, lead ? 300 : 650);
-      const chips = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
-      let answer = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
-      // Rolle ohne Vorschläge; Demo-Pfad (Produktmanagerin mit Präsentation) nur über den ersten Chip.
-      if (q.key === "role") demoPath = /produktmanag/i.test(answer);
+      const chips: string[] = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
+      let answer: string = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
+      // Rolle ohne Vorschläge; Demo-Pfad (Notfallsanitäter Max Müller mit Fallvorstellung) nur über den ersten Chip.
+      if (q.key === "role") demoPath = /notfallsan|notsan/i.test(answer) && !/azubi|auszubild/i.test(answer);
       else if (!q.multi && answer !== q.chips[0]) demoPath = false;
       const base = { step: i + 1, nextTopic: next?.topic, nextQuestion: next?.q, nextIsChoice: Boolean(next?.multi), name, answersSoFar: answers };
       let r = await ai("onboard", { ...base, question: asked, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
@@ -392,7 +392,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       openReise("home");
       await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
     } else {
-      await say("Super. Steht bei dir gerade etwas an, eine Präsentation oder ein Termin?");
+      await say("Super. Steht bei dir gerade etwas an, eine Fallbesprechung oder ein Termin?");
     }
   }
 
@@ -459,11 +459,11 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       rehBack.current = res;
     });
     setReh(null);
-    await say(`Generalprobe gespeichert. Präsentieren **${before} % → ${after} %**.`, 300);
+    await say(`Generalprobe gespeichert. Kommunikation **${before} % → ${after} %**.`, 300);
   }
 
   async function askTime() {
-    await say("Wann präsentierst du? Ich melde mich danach.");
+    await say("Wann ist dein Termin? Ich melde mich danach.");
     const when = await ask(["Morgen um 10:00", "Morgen um 14:30"], "z. B. morgen um 11 Uhr");
     const { at, label } = parseWhen(when, now());
     update((s) => {
@@ -479,7 +479,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
 
   async function presentFlow(text: string) {
     const pct = praesPct();
-    let topic = /roadmap|q4/i.test(text) ? TOPIC_FULL : "";
+    let topic = /fallbesprech|fallvorstell|einsatz|polytrauma/i.test(text) ? TOPIC_FULL : "";
     if (!topic) {
       await say(`Gut, dass du dich meldest! Worum geht es?`);
       topic = await ask([TOPIC_FULL], "Thema und Publikum");
@@ -525,20 +525,20 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     const s0 = sRef.current;
     const name = s0.profile?.name || "";
     const p = s0.presentation;
-    const topic = p?.topic || "deine Präsentation";
+    const topic = p?.topic || "deine Fallvorstellung";
     const at = p?.at ? new Date(p.at) : now();
     note(`${WD[now().getDay()]}, ${fmtClock(now())} · nach deinem Termin`);
-    await say(`Hallo ${name}! Heute um ${at.getHours()}${at.getMinutes() ? `:${String(at.getMinutes()).padStart(2, "0")}` : ""} Uhr war deine Präsentation. Wie ist es gelaufen?`, 300);
+    await say(`Hallo ${name}! Heute um ${at.getHours()}${at.getMinutes() ? `:${String(at.getMinutes()).padStart(2, "0")}` : ""} Uhr war deine ${topicShort(topic)}. Wie ist es gelaufen?`, 300);
     const how = await ask(["Super", "Ganz gut", "Holprig"]);
     const r = await ai("react", { answer: how }, fallback.react(how));
     await say(r.text, 100);
-    const gb = await ask(["Der Einstieg saß. Bei der Rückfrage zum Budget war ich hektisch."], "Was lief gut, was war schwierig?");
+    const gb = await ask(["Der Einstieg saß. Bei der Rückfrage zur Beckenschlinge war ich hektisch."], "Was lief gut, was war schwierig?");
     const [good, ...badParts] = gb.split(/(?<=\.)\s+/);
     const bad = badParts.join(" ") || gb;
     const ref = await ai("reflect", { how, good, bad }, fallback.reflect());
     const first = TEAM.map((t) => t.name.split(" ")[0]);
     await say(`${ref.text} Soll ich ${first.slice(0, -1).join(", ")} und ${first[first.length - 1]} um kurzes Feedback bitten?`, 200);
-    addXP(60, { kind: "Anwenden", title: `Präsentation gehalten: ${topicShort(topic)}`, detail: `Gut: ${good} · Anders: ${bad}` });
+    addXP(60, { kind: "Anwenden", title: `Vorgestellt: ${topicShort(topic)}`, detail: `Gut: ${good} · Anders: ${bad}` });
     setChips([]);
     const selId = push({ from: "bot", kind: "peerSelect" });
     push({ from: "bot", kind: "xpline", text: "+60 XP für deine Reflexion" });
@@ -580,7 +580,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       s.phase = "done";
     });
     await say(syn.summary, 200);
-    push({ from: "bot", kind: "link", data: { icon: "orb", sub: `Präsentieren ${before} % → ${after} %`, title: "Lernpfad ansehen", to: "update" } });
+    push({ from: "bot", kind: "link", data: { icon: "orb", sub: `Kommunikation ${before} % → ${after} %`, title: "Lernpfad ansehen", to: "update" } });
     addXP(50, { kind: "Reflexion", title: "Learning Loop geschlossen, Lernpfad erweitert" });
     award("loop");
   }
@@ -602,7 +602,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     await say(out.text, 100);
   }
 
-  /** Demo: Pflichtfortbildung absolvieren (öffnet sonst das Lernportal). */
+  /** Demo: Pflichtschulung absolvieren (öffnet sonst das Lernportal bzw. die Terminbuchung). */
   function doMandatory(id: string) {
     const m = MANDATORY.find((x) => x.id === id);
     if (!m) return;
@@ -610,7 +610,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       const done = s.mandatoryDone ?? MANDATORY_DONE_DEFAULT;
       if (!done.includes(id)) s.mandatoryDone = [...done, id];
     });
-    addXP(30, { kind: "Lernen", title: `Pflichtfortbildung „${m.title}“ abgeschlossen` });
+    addXP(30, { kind: "Lernen", title: `Pflichtschulung „${m.title}“ (${m.id}) absolviert` });
     toast(`${m.title} erledigt, +30 XP`);
   }
 

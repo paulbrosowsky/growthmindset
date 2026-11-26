@@ -101,7 +101,7 @@ export default function Home() {
           <span className="mut">
             Dein persönlicher Lern-Coach
             <br />
-            bei Neckartal Systemtechnik
+            beim DRK-Kreisverband Musterstadt
           </span>
         </div>
         <form
