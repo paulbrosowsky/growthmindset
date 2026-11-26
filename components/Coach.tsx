@@ -12,7 +12,7 @@ import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
 import { fallback, type ChatOut, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
-import { addToPath, BADGES, demoPath as demoGoalPath, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
+import { addToPath, BADGES, demoPath as demoGoalPath, goalPathKey, profilePath, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, GoalPathState, PathChallenge, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
@@ -370,12 +370,12 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     const demo = demoGoalPath(profile.card?.goal || profile.goal);
     const [w, gp] = await Promise.all([
       ai("welcome", {}, fallback.welcome(profile)),
-      demoPath ? Promise.resolve(demo) : ai<GoalPathState>("path", {}, demo, true),
+      demoPath ? Promise.resolve(demo) : ai<GoalPathState>("path", {}, profilePath(profile), true),
     ]);
-    const own = gp?.challenges?.length ? gp : demo;
+    const own = gp?.challenges?.length ? gp : demoPath ? demo : profilePath(profile);
     update((s) => {
       s.goalPath = own;
-      s.pathDone = own.source === "ai" ? [] : undefined;
+      s.pathDone = own.source === "demo" ? undefined : [];
     });
     update((s) => {
       s.summary = w.summary;
@@ -626,6 +626,25 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     toast(`${m.title} erledigt, +30 XP`);
   }
 
+  /**
+   * Profile ohne persönlichen Pfad oder mit einem Demo-Pfad, der nicht zum eigenen Ziel passt
+   * (z. B. weil die KI beim Onboarding nicht antwortete): Pfad aus dem Kennenlernen neu erzeugen.
+   * Die Demo-Persona (Ziel Fallvorstellung) behält den kuratierten Demo-Pfad.
+   */
+  async function repairPath() {
+    const p = sRef.current.profile;
+    const gp = sRef.current.goalPath;
+    if (!p || (gp && gp.source !== "demo")) return;
+    if (goalPathKey(p.card?.goal || p.goal) === "praes") return;
+    const fresh = await ai<GoalPathState>("path", {}, profilePath(p), true);
+    const own = fresh?.challenges?.length ? fresh : profilePath(p);
+    const chat = (sRef.current.goalPath?.challenges ?? []).filter((c) => c.fromChat);
+    update((s) => {
+      s.goalPath = { ...own, challenges: [...own.challenges.slice(0, -1), ...chat, ...own.challenges.slice(-1)] };
+      s.pathDone = (s.pathDone ?? []).filter((id) => chat.some((c) => c.id === id));
+    });
+  }
+
   /** Ziel aus dem Chat als Challenge in den Lernpfad übernehmen. */
   function addChatGoal(g: PathChallenge) {
     const st = sRef.current;
@@ -765,6 +784,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     });
     if (ph === "new" || ph === "onboarding") void runFlow(onboarding);
     else {
+      void repairPath();
       setIdleChips();
       if (!isDue(sRef.current)) note(`Willkommen zurück, ${sRef.current.profile?.name || ""}`);
       checkDue();

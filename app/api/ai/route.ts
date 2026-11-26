@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
 import { fallback, type OnboardOut } from "@/lib/fallbacks";
 import { saaExcerpt } from "@/lib/saaServer";
-import { CATALOG, demoPath, findChallenge, findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, PATH_AREAS, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
+import { CATALOG, profilePath, findChallenge, findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, PATH_AREAS, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
 import { SAA_TOC } from "@/lib/saa";
 import type { PathChallenge } from "@/lib/types";
 import type { AppState } from "@/lib/types";
@@ -240,15 +240,19 @@ export async function POST(req: NextRequest) {
       case "path": {
         // Persönlicher 4-Wochen-Lernpfad aus dem Onboarding: PLAN, EXPLORE, EXPERIMENT, REFLECT.
         const p = state.profile;
-        const fb = demoPath(p?.card?.goal || p?.goal);
-        if (!p) return fb;
+        if (!p) return null;
+        const fb = profilePath(p);
+        const card = p.card ? `\nProfil-Karte aus dem Kennenlernen: WER ${p.card.wer.join(" · ")} | WAS ${p.card.was.join(" · ")} | WIE ${p.card.wie.join(" · ")}` : "";
         const out = await ask<{ title: string; challenges: Omit<PathChallenge, "id">[] }>(
-          `${ctx}\n\nFortbildungskatalog: ${CATALOG.map((c) => `${c.id} ${c.title} (${c.duration})`).join("; ")}\nTitel in den SAA und BPR 2025 (für refs, nur exakt so): ${SAA_TOC.map((e) => e.title).join(" | ")}\n\nErstelle den persönlichen Lernpfad für die nächsten 4 Wochen zum vereinbarten Lernziel „${p.card?.goal || p.goal}“. Er führt von Planen über Erkunden und Ausprobieren im Arbeitsalltag bis zur Reflexion.\ntitle: das Ziel als kurze Frage oder Aussage in Du-Form, max. 8 Wörter, ohne „In 4 Wochen“.\nchallenges: 8 bis 10 kleine Schritte in sinnvoller Reihenfolge, die letzte ist eine Reflexion. Jede passt zu Rolle, Lernweise („${p.preference}“) und Zeitrahmen („${p.time || "offen"}“) und baut auf Kompetenzlücken laut Jobprofil auf, wo es zum Ziel passt.\n- area: fach (Fachkompetenz), meth (Methodenkompetenz), komm (Sozialkompetenz) oder selbst (Selbstkompetenz); mindestens zwei verschiedene.\n- title: max. 6 Wörter, konkret, ohne Punkt.\n- kind: Lernen, Üben, Anwenden oder Reflexion. min: realistische Minuten (5 bis 60).\n- text: 1 kurzer Satz, was genau zu tun ist, max. 14 Wörter.\n- refs: 0 bis 2 passende Titel aus den SAA und BPR, nur wenn fachlich passend, sonst leer. Eine Fortbildung aus dem Katalog darf als Anmelde-Schritt vorkommen (mit ID im Titel).`,
+          `${ctx}\n\nFortbildungskatalog: ${CATALOG.map((c) => `${c.id} ${c.title} (${c.duration})`).join("; ")}\nTitel in den SAA und BPR 2025 (für refs, nur exakt so): ${SAA_TOC.map((e) => e.title).join(" | ")}\n\n${card}\n\nErstelle den persönlichen Lernpfad für die nächsten 4 Wochen zum vereinbarten Lernziel „${p.card?.goal || p.goal}“. Greif auf, was im Kennenlernen gesagt wurde (was ${p.name} lernen will, wohin es gehen soll, was Spaß macht und was belastet). Er führt von Planen über Erkunden und Ausprobieren im Arbeitsalltag bis zur Reflexion.\ntitle: das Ziel als kurze Frage oder Aussage in Du-Form, max. 8 Wörter, ohne „In 4 Wochen“.\nchallenges: 8 bis 10 kleine Schritte in sinnvoller Reihenfolge, die letzte ist eine Reflexion. Jede passt zu Rolle, Lernweise („${p.preference}“) und Zeitrahmen („${p.time || "offen"}“) und baut auf Kompetenzlücken laut Jobprofil auf, wo es zum Ziel passt.\n- area: fach (Fachkompetenz), meth (Methodenkompetenz), komm (Sozialkompetenz) oder selbst (Selbstkompetenz); mindestens zwei verschiedene.\n- title: max. 6 Wörter, konkret, ohne Punkt.\n- kind: Lernen, Üben, Anwenden oder Reflexion. min: realistische Minuten (5 bis 60).\n- text: 1 kurzer Satz, was genau zu tun ist, max. 14 Wörter.\n- refs: 0 bis 2 passende Titel aus den SAA und BPR, nur wenn fachlich passend, sonst leer. Eine Fortbildung aus dem Katalog darf als Anmelde-Schritt vorkommen (mit ID im Titel).`,
           obj({ title: str, challenges: { type: "array", items: chalSchema } }),
           { maxTokens: 3000 },
         );
         const list = (out?.challenges || []).map((c, i) => cleanChal(c, `g${i + 1}`)).filter(Boolean) as PathChallenge[];
-        if (!out || list.length < 6) return fb;
+        if (!out || list.length < 6) {
+          console.warn("[path] KI-Pfad unbrauchbar, nutze Profil-Pfad", out ? list.length : "keine Antwort");
+          return fb;
+        }
         return { title: (out.title || "").trim().replace(/^in 4 wochen[:,]?\s*/i, "") || fb.title, challenges: list.slice(0, 12), source: "ai" as const };
       }
       case "chat": {

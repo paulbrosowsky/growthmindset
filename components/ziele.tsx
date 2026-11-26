@@ -72,7 +72,7 @@ export function goalPath(state: AppState, now: Date): GoalPath | null {
   // Persönlicher Pfad aus Onboarding und Chat; ältere Profile ohne Pfad bekommen den Demo-Pfad zum Ziel.
   const own = state.goalPath;
   const challenges = own?.challenges?.length ? own.challenges : GOAL_PATHS[key].challenges;
-  const done = state.pathDone ?? (own?.source === "ai" ? [] : PATH_DONE_DEFAULT(key));
+  const done = state.pathDone ?? (own && own.source !== "demo" ? [] : PATH_DONE_DEFAULT(key));
   const start = new Date(state.goalSetAt || state.createdAt);
   const week = Math.min(4, Math.max(1, Math.floor((dayStart(now) - dayStart(start)) / (7 * DAY)) + 1));
   return {

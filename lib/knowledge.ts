@@ -1,6 +1,6 @@
 // Demo-Unternehmenskontext: DRK-Kreisverband Musterstadt e. V. (fiktiv, siehe docs/DRK_Personalentwicklung_Demodaten.md).
 // In einem echten Betrieb pflegt die Personalentwicklung diese Daten.
-import type { AppState, Area, ChallengeKind, GoalPathState, PathChallenge, Rec, Skill } from "./types";
+import type { AppState, Area, ChallengeKind, GoalPathState, PathChallenge, Profile, Rec, Skill } from "./types";
 import { SAA_SOURCE, SAA_TOC } from "./saa";
 
 /** Kompetenzstufen des Kreisverbands (1 bis 4). Teilkompetenzen nutzen dieselbe Skala, 0 = noch nicht bewertet. */
@@ -401,6 +401,49 @@ export const findChallenge = (title: string, own?: GoalPathState) =>
 export function demoPath(goal?: string): GoalPathState {
   const key = goalPathKey(goal);
   return { title: GOAL_PATHS[key].title, challenges: GOAL_PATHS[key].challenges.map((c) => ({ ...c })), source: "demo" };
+}
+
+/** „In 4 Wochen erkläre ich einen Behandlungspfad …“ → „Erkläre einen Behandlungspfad …“ */
+export function goalTitle(goal?: string) {
+  let t = (goal || "").replace(/^\s*in (den nächsten )?4 wochen[:,]?\s*/i, "").replace(/[.!]+$/, "").trim();
+  t = t.replace(/^(\S+) ich /i, "$1 ").replace(/^(möchte|will|kann) /i, "");
+  return t ? t[0].toUpperCase() + t.slice(1) : "";
+}
+
+/**
+ * Persönlicher Pfad ohne KI: aus Lernziel, Lernwunsch, Lernweise und Zeitrahmen des Kennenlernens.
+ * Zyklus Planen, Erkunden, Ausprobieren, Reflektieren; fachliche Schritte stützen sich auf passende SAA/BPR.
+ */
+export function profilePath(p: Profile): GoalPathState {
+  const text = [p.card?.goal, p.goal, p.learn, ...(p.card?.was ?? [])].filter(Boolean).join(" ");
+  const low = text.toLowerCase();
+  const words = low.split(/[^a-zäöüß0-9]+/).filter((w) => w.length >= 5);
+  const hit = SAA_TOC.find((e) => words.some((w) => e.title.toLowerCase().includes(w)));
+  const rd = /notfallsan|rettung|sanit/i.test(p.role || "");
+  const ref = hit?.title ?? (rd ? "<c>ABCDE – Herangehensweise" : "");
+  const refShort = ref.replace(/^Handreichung /, "").replace(/<c>/, "c").replace(/ – Herangehensweise$/, "-Schema").replace(/ – .*$/, "");
+  const how = `${p.preference || ""} ${(p.card?.wie ?? []).join(" ")}`.toLowerCase();
+  const reads = /les|zusammenfass|text/.test(how);
+  const talks = /austausch|kolleg|gespräch|team/.test(how);
+  const when = (p.time || (p.card?.wie ?? []).find((x) => /zeit|phase|dienst|wache|weg|nach/i.test(x)) || "").trim();
+  const title = goalTitle(p.card?.goal || p.goal) || "Dein Lernziel";
+  const r = ref ? [ref] : [];
+  const list: Omit<PathChallenge, "id">[] = [
+    { area: "meth", title: "Erfolgskriterium festlegen", kind: "Lernen", min: 10, text: "Woran merkst du in 4 Wochen, dass du dein Ziel erreicht hast?" },
+    ref
+      ? { area: "fach", title: reads ? `${refShort} lesen und zusammenfassen` : `${refShort} durcharbeiten`, kind: "Lernen", min: 20, text: "Halte die Kernschritte in eigenen Worten fest.", refs: r }
+      : { area: "fach", title: "Grundlagen zum Thema sammeln", kind: "Lernen", min: 20, text: "Such dir zwei interne Quellen und fasse sie kurz zusammen." },
+    { area: "meth", title: "Struktur auf einer Karte", kind: "Üben", min: 15, text: "Bring den Ablauf auf eine Karte, die du in die Tasche steckst.", refs: r },
+    { area: "fach", title: "Wissenscheck mit Kompass", kind: "Lernen", min: 10, text: "Kompass stellt dir fünf Fragen, eine nach der anderen.", refs: r },
+    talks
+      ? { area: "komm", title: "Mit einer Kollegin austauschen", kind: "Anwenden", min: 15, text: "Erklär ihr den Ablauf und lass dir Rückfragen stellen." }
+      : { area: "komm", title: "Einer Kollegin erklären", kind: "Anwenden", min: 15, text: "Erklär den Ablauf in fünf Minuten und lass dir Rückfragen stellen." },
+    { area: "fach", title: "Fallbeispiel durchspielen", kind: "Üben", min: 20, text: "Kompass spielt einen Fall mit dir durch, du erklärst Schritt für Schritt.", refs: r },
+    { area: "komm", title: "Im Alltag ausprobieren", kind: "Anwenden", min: 20, text: when ? `${when[0].toUpperCase() + when.slice(1)}: wende dein Ziel einmal bewusst an.` : "Wende dein Ziel im nächsten Dienst einmal bewusst an." },
+    { area: "komm", title: "Feedback einholen", kind: "Anwenden", min: 10, text: "Frag jemanden, der dabei war: Was war klar, was nicht?" },
+    { area: "selbst", title: "Reflexion nach 4 Wochen", kind: "Reflexion", min: 10, text: "Was sitzt jetzt, was nimmst du dir als Nächstes vor?" },
+  ];
+  return { title, challenges: list.map((c, i) => ({ ...c, id: `h${i + 1}`, refs: c.refs?.length ? c.refs : undefined })), source: "profil" };
 }
 
 export const PATH_AREAS = ["fach", "meth", "komm", "selbst"];

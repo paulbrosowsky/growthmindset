@@ -19,7 +19,7 @@ export type ChallengeKind = "Lernen" | "Üben" | "Anwenden" | "Reflexion";
 export type PathChallenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string; refs?: string[]; fromChat?: boolean };
 
 /** Persönlicher Lernpfad: nach dem Onboarding erzeugt, im Chat erweitert. */
-export type GoalPathState = { title: string; challenges: PathChallenge[]; source: "ai" | "demo" };
+export type GoalPathState = { title: string; challenges: PathChallenge[]; source: "ai" | "profil" | "demo" };
 
 export type Skill = { id: string; name: string; subs: Sub[]; recs: Rec[] };
 
