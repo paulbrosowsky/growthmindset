@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import type { VideoResult } from "./VideoRecorder";
 import Rehearsal, { type RehearsalState } from "./Rehearsal";
-import { LinkCard, OptionsCard, PeerAskCard, RichText, SlidesCard, SummaryCard } from "./Cards";
+import { LinkCard, OptionsCard, PeerAskCard, ProfileSummaryCard, RichText, SlidesCard, SummaryCard } from "./Cards";
 import { AreaView, DemoSheet, Home, SkillUpdateView, TeamView } from "./views";
 import { Icon } from "./ui";
 import { Button } from "@/components/shadcn/button";
@@ -20,7 +20,21 @@ type Tab = "coach" | "reise" | "team";
 type Reise = { view: "home" | "area" | "update"; area: string; skill: string };
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
-const OB_TOTAL = 7;
+const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
+  // Wer?
+  { key: "role", q: "Welche Rolle hast du aktuell?", chips: ["Produktmanagerin, Wärmepumpen-App"], ph: "Rolle und Bereich" },
+  { key: "experience", q: "Welche beruflichen Stationen hattest du bisher?", chips: ["3 Jahre Agentur, seit 8 Monaten hier"] },
+  { key: "likes", q: "Was macht dir im Berufsalltag Spaß, und was meidest du eher?", chips: ["Datenanalysen mag ich, große Präsentationen meide ich."] },
+  // Was?
+  { key: "learn", q: "Was möchtest du lernen?", chips: ["Souverän präsentieren und mit Daten überzeugen"] },
+  { key: "vision", q: "Wo siehst du dich in 3 Jahren?", chips: ["Ein eigenes Produktteam leiten"] },
+  { key: "goal", q: "Und was willst du in den nächsten 4 Wochen erreichen?", chips: ["Die Q4-Roadmap sicher vorstellen"] },
+  // Wie?
+  { key: "preference", q: "Wie lernst du am besten?", chips: ["Praxis und Üben", "Videos", "Lesen", "Austausch"], multi: true },
+  { key: "time", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["20 Minuten nach dem Daily", "Auf dem Weg zur Arbeit"] },
+];
+const OB_TOTAL = OB_QUESTIONS.length;
+const MAX_FOLLOWUPS = 4;
 const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const TOPIC_FULL = "Q4-Roadmap der Wärmepumpen-App vor der Bereichsleitung, 15 Minuten";
 const PRESENT_CHIP = "Hey, ich muss morgen die Q4-Roadmap präsentieren.";
@@ -255,43 +269,82 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       s.messages = [];
     });
     setObStep(1);
-    const guess = sRef.current.username.split(/[._-]/)[0];
-    const nameChip = guess.charAt(0).toUpperCase() + guess.slice(1);
-    await say(`Hallo! Ich bin **Kompass**, dein Lern-Coach bei ${COMPANY.short}. Wie heißt du?`, 400);
-    const name = (await ask([nameChip], "Dein Vorname")).split(/[ ,]/)[0] || nameChip;
+    // Der Name kommt aus dem Login (z. B. „lena.berger“ → „Lena“).
+    const guess = sRef.current.username.split(/[._\-\s@0-9]/)[0];
+    let name = guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase();
+    if (name.length < 2) {
+      await say(`Hallo, ich bin **Kompass**, dein Lern-Coach bei ${COMPANY.short}. Wie heißt du?`, 400);
+      name = (await ask([], "Dein Vorname")).split(/[ ,]/)[0] || "du";
+      await say("Schön, dich kennenzulernen. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.");
+    } else {
+      await say(`Hallo ${name}, ich bin **Kompass**, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.`, 400);
+    }
 
-    setObStep(2);
-    await say(`Schön, dich kennenzulernen, ${name}! Was ist deine Rolle?`);
-    const role = await ask(["Produktmanagerin, Wärmepumpen-App", "Entwickler im Steuerungsteam", "Teamleiterin im Kundenservice"], "Rolle und Bereich");
+    const answers: Partial<Profile> = { name };
+    const history = () =>
+      sRef.current.messages
+        .filter((m) => m.kind === "text" && m.text)
+        .slice(-10)
+        .map((m) => ({ from: m.from, text: m.text }));
+    let left = MAX_FOLLOWUPS;
+    let lead = "";
+    for (let i = 0; i < OB_QUESTIONS.length; i++) {
+      const q = OB_QUESTIONS[i];
+      setObStep(i + 1);
+      await say(lead ? `${lead} ${q.q}` : q.q, lead ? 300 : 650);
+      let answer = q.multi ? await askMulti(q.chips) : await ask(q.chips, q.ph || "Deine Antwort …");
+      const base = { step: i + 1, question: q.q, nextQuestion: OB_QUESTIONS[i + 1]?.q, name };
+      let r = await ai("onboard", { ...base, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
+      if (r.followUp && left > 0) {
+        left--;
+        await say(`${r.reaction} ${r.followUp}`.trim(), 200);
+        const more = await ask([], "Erzähl gern mehr …");
+        answer = `${answer} (${more})`;
+        r = await ai(
+          "onboard",
+          { ...base, question: r.followUp, answer: more, followUpsLeft: 0, isFollowUpAnswer: true, history: history() },
+          fallback.onboard(i + 1, more, 0, true),
+        );
+      }
+      answers[q.key] = answer;
+      lead = r.reaction;
+    }
 
-    setObStep(3);
-    await say("Seit wann bist du dabei, und was hast du davor gemacht?");
-    const tenureRaw = await ask(["8 Monate, davor 3 Jahre Agentur", "4 Jahre", "Frisch nach dem Studium"]);
-    const [tenure, ...rest] = tenureRaw.split(/,\s*davor\s*/i);
-    const experience = rest.length ? `davor ${rest.join(", ")}` : tenureRaw;
+    // Profil-Karte: erst wenn die Person „Passt“ sagt, ist das Onboarding abgeschlossen.
+    setObStep(OB_TOTAL + 1);
+    let correction = "";
+    let card = fallback.profile(answers);
+    for (;;) {
+      card = await ai("profile", { answers, correction }, fallback.profile(answers, correction));
+      await say(lead ? `${lead} ${card.intro}` : card.intro, 200);
+      lead = "";
+      push({ from: "bot", kind: "profile", data: { card } });
+      await say("Stimmt das so?", 500);
+      const c = await ask(["Passt", "Anpassen"], "Oder schreib, was nicht stimmt …");
+      if (/^(passt|stimmt|ja)\b/i.test(c.trim())) break;
+      if (/^anpassen$/i.test(c.trim())) {
+        await say("Was soll ich ändern?");
+        correction = await ask([], "z. B. Ziel konkreter fassen …");
+      } else correction = c;
+      lead = "Danke, ich passe es an.";
+    }
 
-    setObStep(4);
-    const roleShort = role.split(",")[0];
-    await say(`${tenure.trim()} als ${roleShort}, gut. Was fordert dich gerade am meisten heraus?`);
-    const challenge = await ask(["Vor großen Runden werde ich nervös.", "Mir fehlt die Zeit zum Lernen.", "Ich will fachlich tiefer einsteigen."]);
-
-    setObStep(5);
-    await say("Danke für deine Offenheit. Das lässt sich gut trainieren. Wie lernst du am liebsten?");
-    const preference = await askMulti(["Videos", "Praxis", "Lesen", "Austausch", "Workshops"]);
-
-    setObStep(6);
-    await say("Welche Themen interessieren dich?");
-    const interests = await ask(["Daten und Nachhaltigkeit", "Technik und Software", "Führung und Teamarbeit"]);
-
-    setObStep(7);
-    await say("Letzte Frage: Wo willst du in zwei Jahren stehen?");
-    const goal = await ask(["Ein eigenes Produktteam leiten", "Fachexpertin werden", "Weiß ich noch nicht"]);
-
-    const profile: Profile = { name, role, tenure: tenure.trim(), experience, interests, challenge, preference, goal };
+    const profile: Profile = {
+      name,
+      role: answers.role || "",
+      experience: answers.experience || "",
+      likes: answers.likes,
+      learn: answers.learn,
+      vision: answers.vision,
+      goal: card.goal || answers.goal || "",
+      preference: answers.preference || "",
+      time: answers.time,
+      card: { wer: card.wer, was: card.was, wie: card.wie, goal: card.goal },
+    };
     update((s) => {
       s.profile = profile;
     });
-    setObStep(8);
+    setObStep(OB_TOTAL + 2);
     const w = await ai("welcome", {}, fallback.welcome(profile));
     update((s) => {
       s.summary = w.summary;
@@ -313,8 +366,8 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     push({ from: "bot", kind: "summary", data: { focus } });
     addXP(50, { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    await say("Wollen wir direkt weitermachen, oder möchtest du erst deinen Lernpfad sehen?");
-    const next = await ask(["Weitermachen", "Lernpfad ansehen"]);
+    await say(`Dein erster Schritt: **${w.firstStep}**. Wollen wir direkt loslegen, oder schaust du erst in deinen Lernpfad?`);
+    const next = await ask(["Loslegen", "Lernpfad ansehen"]);
     if (/lernpfad/i.test(next)) {
       openReise("home");
       await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
@@ -729,6 +782,12 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
             <LinkCard icon={d.icon} sub={d.sub} title={d.title} onOpen={() => (d.to === "team" ? setTab("team") : openReise("update"))} />
           </div>
         );
+      case "profile":
+        return (
+          <div className="blk">
+            <ProfileSummaryCard card={d.card} />
+          </div>
+        );
       case "summary":
         return (
           <div className="blk">
@@ -786,7 +845,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                         </span>
                         <div className="t">
                           Kennenlernen
-                          <small>{obStep > OB_TOTAL ? "Lernpfad wird erstellt" : `Frage ${Math.max(1, obStep || 1)} von ${OB_TOTAL}`}</small>
+                          <small>{obStep > OB_TOTAL + 1 ? "Lernpfad wird erstellt" : obStep > OB_TOTAL ? "Dein Profil" : `Frage ${Math.max(1, obStep || 1)} von ${OB_TOTAL}`}</small>
                         </div>
                       </div>
                       <Progress className="bar thin mx-4 mt-2.5 w-auto" value={(Math.min(OB_TOTAL, Math.max(1, obStep || 1)) / OB_TOTAL) * 100} />

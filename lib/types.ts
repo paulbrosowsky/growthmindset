@@ -28,15 +28,29 @@ export type Experience = {
   xp: number;
 };
 
+export type ProfileCard = { wer: string[]; was: string[]; wie: string[]; goal: string };
+
 export type Profile = {
   name: string;
   role: string;
-  tenure: string;
+  /** Bisherige berufliche Stationen */
   experience: string;
-  interests: string;
-  challenge: string;
-  preference: string;
+  /** Was macht Spaß, was wird gemieden */
+  likes?: string;
+  /** Was möchte die Person lernen */
+  learn?: string;
+  /** Wo in 3 Jahren */
+  vision?: string;
+  /** Gemeinsam formuliertes Lernziel für die nächsten 4 Wochen */
   goal: string;
+  preference: string;
+  /** Wann und wo Lernen in den Alltag passt */
+  time?: string;
+  card?: ProfileCard;
+  // Felder aus dem alten Onboarding (ältere gespeicherte Profile)
+  tenure?: string;
+  interests?: string;
+  challenge?: string;
 };
 
 export type Slide = { title: string; bullets: string[]; note: string };
@@ -64,6 +78,7 @@ export type MsgKind =
   | "loop"
   | "recs"
   | "summary"
+  | "profile"
   | "video"
   | "note"
   | "update"
