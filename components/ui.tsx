@@ -66,6 +66,7 @@ const PATHS: Record<string, ReactNode> = {
   ),
   upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
   chev: <path d="M9 5l7 7-7 7" />,
+  restart: <path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4.5h4.5" />,
 };
 
 export function Icon({ name, size = 18, style, className }: { name: string; size?: number; style?: CSSProperties; className?: string }) {

@@ -432,6 +432,7 @@ export function DemoSheet({
   script,
   setScript,
   onReset,
+  onRestart,
 }: {
   open: boolean;
   onClose: () => void;
@@ -441,6 +442,7 @@ export function DemoSheet({
   script: boolean;
   setScript: (v: boolean) => void;
   onReset: () => void;
+  onRestart: () => void;
 }) {
   const [qr, setQr] = useState("");
   useEffect(() => {
@@ -489,6 +491,9 @@ export function DemoSheet({
             <div className="mut xs">Öffnet die App auf dem eigenen Handy</div>
           </div>
         </Card>
+        <Button variant="secondary" onClick={onRestart}>
+          Konversation neu starten
+        </Button>
         <Button variant="secondary" onClick={onReset}>
           Profil zurücksetzen
         </Button>

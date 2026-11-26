@@ -39,6 +39,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   const [tab, setTabState] = useState<Tab>("coach");
   const tabRef = useRef<Tab>("coach");
   const [reise, setReise] = useState<Reise>({ view: "home", area: "komm", skill: "praes" });
+  const [confirmRestart, setConfirmRestart] = useState(false);
   const [reh, setReh] = useState<RehearsalState | null>(null);
   const [obStep, setObStep] = useState(0);
   const [unread, setUnread] = useState(false);
@@ -653,6 +654,12 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  /** Konversation neu starten: Profil zurücksetzen, Username bleibt. */
+  async function restart() {
+    await fetch(`/api/state?u=${encodeURIComponent(S.username)}`, { method: "DELETE" }).catch(() => {});
+    window.location.reload();
+  }
+
   async function resetAll() {
     await fetch(`/api/state?u=${encodeURIComponent(S.username)}`, { method: "DELETE" }).catch(() => {});
     try {
@@ -785,6 +792,21 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                         Kompass
                         <small>Dein Coach</small>
                       </div>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        className="rb"
+                        aria-label={confirmRestart ? "Wirklich neu starten" : "Konversation neu starten"}
+                        style={confirmRestart ? { width: "auto", padding: "0 12px", gap: 6, display: "flex", alignItems: "center", whiteSpace: "nowrap", background: "var(--acc)", color: "#fff", fontSize: 11, fontWeight: 700 } : undefined}
+                        onClick={() => {
+                          if (!confirmRestart) {
+                            setConfirmRestart(true);
+                            setTimeout(() => setConfirmRestart(false), 3500);
+                          } else void restart();
+                        }}
+                      >
+                        <Icon name="restart" size={16} />
+                        {confirmRestart && "Neu starten?"}
+                      </motion.button>
                     </div>
                   )}
                   <div className="log" ref={logRef}>
@@ -966,6 +988,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
           script={script}
           setScript={setScript}
           onReset={resetAll}
+          onRestart={restart}
         />
       </div>
     </MotionConfig>
