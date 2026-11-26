@@ -74,7 +74,7 @@ export default function Home() {
       <div className="gate-in">
         <div className="gate-brand">
           <span className="gate-logo">
-            <Icon name="logo" size={46} />
+            <Icon name="logo" size={46} style={{ strokeWidth: 1.5 }} />
           </span>
           <b>Kompass</b>
           <span className="mut">
@@ -90,19 +90,19 @@ export default function Home() {
           }}
         >
           <Card>
-            <label htmlFor="u" className="mut xs">
+            <label htmlFor="u" className="mut" style={{ fontWeight: 700, fontSize: 12 }}>
               Wähle einen Usernamen
             </label>
             <div className="gate-field">
-              <Input id="u" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. lena.berger" autoComplete="username" autoCapitalize="none" className="h-12 flex-1 bg-transparent px-0 text-base font-bold shadow-none focus-visible:ring-0" />
+              <Input id="u" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. lena.berger" autoComplete="username" autoCapitalize="none" className="h-full flex-1 rounded-none bg-transparent px-0 text-[15px] font-bold shadow-none focus-visible:ring-0" />
               {name.trim().length >= 2 && (
-                <span className="ck a sm">
+                <span className="ck a" style={{ width: 22, height: 22, borderRadius: 7 }}>
                   <Icon name="check" size={13} />
                 </span>
               )}
             </div>
-            <div className="mut xs" style={{ marginTop: 6 }}>
-              Kein Passwort nötig. Mit demselben Namen kommst du zurück.
+            <div className="mut" style={{ fontSize: 11, marginTop: 6 }}>
+              {name.trim().length >= 2 ? "Verfügbar. Kein Passwort nötig." : "Kein Passwort nötig."}
             </div>
           </Card>
           <Button size="lg" disabled={loading || !name.trim()}>
@@ -110,7 +110,9 @@ export default function Home() {
           </Button>
           {error && <p className="error xs">{error}</p>}
         </form>
-        <p className="mut xs center">Dein Name wird nur auf diesem Gerät gemerkt.</p>
+        <p className="mut" style={{ textAlign: "center", fontSize: 11 }}>
+          Dein Name wird nur auf diesem Gerät gemerkt.
+        </p>
       </div>
     </main>
   );

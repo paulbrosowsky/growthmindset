@@ -103,10 +103,10 @@ export function initialAreas(): Area[] {
             ["fragen", "Umgang mit Fragen", 1],
           ],
           [
-            r("p1", "Intern", "Workshop „Wirkungsvoll präsentieren“", "Neckartal Academy · 2 × 3 Stunden"),
-            r("p2", "Ressource", "Folienvorlage und Präsentationsleitfaden", "Intranet · 15 Minuten"),
-            r("p3", "Extern", "Video: Grundlagen der Präsentationsstruktur", "12 Minuten"),
-            r("p4", "Üben", "60-Sekunden-Pitch im Team-Weekly", "Diese Woche · Anwenden"),
+            r("p4", "Üben", "Generalprobe mit Video", "10 min"),
+            r("p1", "Intern", "Storytelling mit Daten", "1 Tag"),
+            r("p2", "Ressource", "Folienvorlage und Leitfaden", "15 min"),
+            r("p3", "Intern", "Grundlagen der Präsentationsstruktur", "12 min"),
           ],
         ),
         s(

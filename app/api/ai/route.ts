@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       }
       case "react": {
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nDie Präsentation ist vorbei. Du hast gefragt, wie sie gelaufen ist. Antwort von ${name}: „${payload.answer}“.\ntext: 1 kurzer Satz plus Frage, max. 15 Wörter. Reagiere empathisch und passend auf die Antwort und frage dann, was gut geklappt hat. Nur eine Frage.`,
+          `${ctx}\n\nDie Präsentation ist vorbei. Du hast gefragt, wie sie gelaufen ist. Antwort von ${name}: „${payload.answer}“.\ntext: max. 12 Wörter. Reagiere kurz empathisch und frage, was gut lief und was schwierig war.`,
           obj({ text: str }),
           { maxTokens: 800 },
         );
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       }
       case "synth": {
         const out = await ask<ReturnType<typeof fallback.synth>>(
-          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: max. 10 Wörter an ${name}: Ergebnis und nächster Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 5, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 3 neue Vorschläge nach 70/20/10: eine Übung oder Challenge im Arbeitsalltag (type "Üben"), ein internes Angebot aus dem Katalog (type "Intern"), ein externer Inhalt (type "Extern"). title max. 40 Zeichen, why nur Dauer oder Zeitpunkt, z. B. „45 min“ oder „diese Woche“.\nmemory: 2 bis 3 Erkenntnisse über ${name} als Stichworte, je max. 6 Wörter.`,
+          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: max. 10 Wörter an ${name}: Ergebnis und nächster Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 5, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 2 neue Vorschläge: ein internes Angebot aus dem Katalog (type "Intern"), ein externer Inhalt (type "Extern"). title max. 40 Zeichen, why nur Dauer oder Zeitpunkt, z. B. „45 min“ oder „diese Woche“.\nmemory: 2 bis 3 Erkenntnisse über ${name} als Stichworte, je max. 6 Wörter.`,
           obj({
             summary: str,
             levelChanges,

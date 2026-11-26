@@ -1,23 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Progress } from "@/components/shadcn/progress";
-import { Badge } from "@/components/shadcn/badge";
-import { Button } from "@/components/shadcn/button";
 import { motion } from "motion/react";
-import { Card } from "@/components/shadcn/card";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/shadcn/sheet";
 import QRCode from "qrcode";
-import { Icon, Ring, ConcentricRings, Tag, ITEM, MCard, STAGGER } from "./ui";
-import { areaProgress, BADGES, COMPANY, CATALOG, levelOf, METHODS, skillProgress, targetLevel, TEAM, XP_PER_LEVEL } from "@/lib/knowledge";
-import { fmtDay } from "@/lib/clientUtil";
-import type { AppState, Rec } from "@/lib/types";
+import { Button } from "@/components/shadcn/button";
+import { Card } from "@/components/shadcn/card";
+import { Progress } from "@/components/shadcn/progress";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/shadcn/sheet";
+import { Icon, Ring, ConcentricRings, ITEM, MCard, STAGGER } from "./ui";
+import { areaProgress, BADGES, findSkill, levelOf, skillProgress, targetLevel, TEAM, XP_PER_LEVEL } from "@/lib/knowledge";
+import type { AppState, Rec, Skill } from "@/lib/types";
 
 const WD_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 export const longDate = (d: Date) => `${WD_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;
 
 export const recLabel = (t: Rec["type"]) => (t === "Intern" ? "Lernen" : t);
+export const recIcon = (t: Rec["type"]) => (t === "Üben" ? "cam" : t === "Extern" ? "pin" : t === "Ressource" ? "book" : "vid");
+
+/** „Q4-Roadmap der Wärmepumpen-App vor …“ → „Q4-Roadmap“ */
+export const shortTopic = (t?: string) => (t || "deine Präsentation").split(/,| vor | der | für /)[0].trim();
 
 export function initials(name: string) {
   return name
@@ -28,12 +30,15 @@ export function initials(name: string) {
     .join("");
 }
 
-/* ---------------- Home / Lernreise ---------------- */
+const SOURCE_LABEL: Record<string, string> = { Übung: "Aktivitäten", Selbst: "Selbstbild", Kollegen: "Kollegen" };
+
+/* ---------------- Home ---------------- */
 
 export function Home({
   state,
   now,
   onOpenArea,
+  onNext,
   onPractice,
   onFollowUp,
   followUpDue,
@@ -41,6 +46,7 @@ export function Home({
   state: AppState;
   now: Date;
   onOpenArea: (id: string) => void;
+  onNext: () => void;
   onPractice: () => void;
   onFollowUp: () => void;
   followUpDue: boolean;
@@ -48,9 +54,17 @@ export function Home({
   const p = state.profile;
   const lvl = levelOf(state.xp);
   const inLevel = state.xp % XP_PER_LEVEL;
-  const praes = state.areas[0].skills.find((s) => s.id === "praes");
+  const praes = findSkill(state.areas, "praes");
   const praesPct = praes ? skillProgress(praes) : 0;
   const pres = state.presentation;
+  let when = "";
+  if (pres?.at) {
+    const at = new Date(pres.at);
+    const d0 = new Date(now);
+    d0.setHours(0, 0, 0, 0);
+    const diff = Math.round((new Date(at).setHours(0, 0, 0, 0) - d0.getTime()) / 864e5);
+    when = `${diff === 0 ? "Heute" : diff === 1 ? "Morgen" : WD_LONG[at.getDay()]} ${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  }
   return (
     <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
       <div className="hd">
@@ -62,42 +76,42 @@ export function Home({
       </div>
 
       {followUpDue && (
-        <button className="noti" onClick={onFollowUp}>
+        <motion.button variants={ITEM} className="noti" onClick={onFollowUp}>
           <span className="ib">
             <Icon name="bell" />
           </span>
-          <span className="noti-tx">
+          <div style={{ flex: 1 }}>
             <b>Wie ist deine Präsentation gelaufen?</b>
-            <span className="mut">Zwei Minuten Reflexion, +60 XP</span>
-          </span>
-        </button>
+            <div className="mut">
+              Zwei Minuten Reflexion, <span style={{ whiteSpace: "nowrap" }}>+60 XP</span>
+            </div>
+          </div>
+        </motion.button>
       )}
-      {!followUpDue && pres?.atLabel && state.phase === "waiting" && (
-        <div className="noti">
+      {!followUpDue && pres?.at && state.phase === "waiting" && (
+        <motion.div variants={ITEM} className="noti">
           <span className="ib">
             <Icon name="bell" />
           </span>
-          <span className="noti-tx">
+          <div style={{ flex: 1 }}>
             <b>
-              {pres.atLabel.replace(" Uhr", "")} Uhr präsentierst du „{short(pres.topic, 40)}“.
+              {when} präsentierst du die {shortTopic(pres.topic)}.
             </b>
-            <span className="mut">{pres.practiced ? "Generalprobe erledigt. Du bist gut vorbereitet!" : "Heute noch eine Generalprobe?"}</span>
-            {!pres.practiced && (
-              <Button size="sm" onClick={onPractice}>
-                Jetzt üben
-              </Button>
-            )}
-          </span>
-        </div>
+            <div className="mut" style={{ margin: "2px 0 8px" }}>
+              {pres.practiced ? "Generalprobe erledigt. Du bist vorbereitet." : "Heute noch eine Generalprobe?"}
+            </div>
+            {!pres.practiced && <Button onClick={onPractice}>Jetzt üben</Button>}
+          </div>
+        </motion.div>
       )}
 
       <MCard variants={ITEM}>
-        <div className="row between" style={{ marginBottom: 8 }}>
-          <h3>Deine Lernreise</h3>
+        <div className="row between" style={{ marginBottom: 6 }}>
+          <h3 style={{ fontSize: 14 }}>Deine Lernreise</h3>
           <span className="mut xs">Fortschritt in %</span>
         </div>
-        <div className="row" style={{ gap: 14 }}>
-          <ConcentricRings size={104} rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}>
+        <div className="row" style={{ gap: 12 }}>
+          <ConcentricRings size={92} rings={state.areas.map((a) => ({ pct: areaProgress(a), color: a.color }))}>
             <b className="lvl-in">
               Level
               <br />
@@ -106,18 +120,17 @@ export function Home({
           </ConcentricRings>
           <div className="legend">
             {state.areas.map((a) => (
-              <button key={a.id} className="row lg" onClick={() => onOpenArea(a.id)}>
+              <button key={a.id} className="lg" onClick={() => onOpenArea(a.id)}>
                 <i style={{ background: a.color }} />
                 <span className="ell">{a.name}</span>
                 <b>{areaProgress(a)}</b>
-                <Icon name="chev" size={14} className="mut" />
               </button>
             ))}
           </div>
         </div>
       </MCard>
 
-      <MCard variants={ITEM} className="tight">
+      <MCard variants={ITEM} style={{ padding: "12px 14px" }}>
         <div className="row between">
           <b>{state.xp.toLocaleString("de-DE")} XP</b>
           <span className="mut xs">
@@ -127,37 +140,45 @@ export function Home({
         <Progress className="mt-2" value={(inLevel / XP_PER_LEVEL) * 100} />
       </MCard>
 
-      <motion.button variants={ITEM} whileTap={{ scale: 0.98 }} className="card sug" onClick={() => onOpenArea("komm")}>
-        <Ring size={42} width={4} pct={praesPct} color="var(--p1)">
-          <b className="xs">{praesPct}</b>
+      <motion.button variants={ITEM} whileTap={{ scale: 0.98 }} className="card sug" onClick={onNext}>
+        <Ring size={40} width={4} pct={praesPct} color="var(--p1)">
+          <b style={{ fontSize: 10 }}>{praesPct}</b>
         </Ring>
-        <span className="tx">
-          <Tag>Nächster Schritt</Tag>
+        <div className="tx">
+          <span className="tag">Nächster Schritt</span>
           <b className="ell">{state.phase === "done" ? "Rückfragen souverän meistern" : `Präsentieren auf ${Math.min(100, praesPct + 15)} %`}</b>
-        </span>
+        </div>
         <Icon name="send" className="mut" />
       </motion.button>
     </motion.div>
   );
 }
 
-function short(s: string, n: number) {
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-
 /* ---------------- Kompetenzbereich ---------------- */
 
-export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: AppState; areaId: string; skillId: string; onSkill: (id: string) => void; onBack: () => void }) {
+export function AreaView({
+  state,
+  areaId,
+  skillId,
+  onSkill,
+  onBack,
+  onRec,
+}: {
+  state: AppState;
+  areaId: string;
+  skillId: string;
+  onSkill: (id: string) => void;
+  onBack: () => void;
+  onRec: (r: Rec) => void;
+}) {
   const area = state.areas.find((a) => a.id === areaId) ?? state.areas[0];
   const sk = area.skills.find((s) => s.id === skillId) ?? area.skills[0];
   const pct = skillProgress(sk);
   const soll = targetLevel(sk.id, state.focus);
   const role = state.profile?.role?.split(",")[0] || "deine Rolle";
-  const sources = Array.from(new Set(sk.subs.flatMap((s) => s.sources || []).filter((x) => x !== "Start")));
-  const learned = state.memory[0];
-  const recs = [...sk.recs].sort((a, b) => Number(!!b.fresh) - Number(!!a.fresh) || Number(b.type === "Üben") - Number(a.type === "Üben")).slice(0, 2);
+  const rec = [...sk.recs].sort((a, b) => Number(b.type === "Üben") - Number(a.type === "Üben") || Number(!!b.fresh) - Number(!!a.fresh))[0];
   return (
-    <div className="scr">
+    <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
       <div className="hd">
         <button className="rb" onClick={onBack} aria-label="Zurück">
           <Icon name="back" />
@@ -167,175 +188,240 @@ export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: A
           <small>Kompetenzbereich · {area.skills.length} Skills</small>
         </div>
       </div>
-      <Card>
+      <MCard variants={ITEM} style={{ padding: 12 }}>
         <div className="row" style={{ gap: 10, marginBottom: 10 }}>
-          <Ring size={46} width={5} pct={areaProgress(area)} color={area.color}>
-            <b className="xs">{areaProgress(area)}</b>
+          <Ring size={44} width={5} pct={areaProgress(area)} color={area.color}>
+            <b style={{ fontSize: 11 }}>{areaProgress(area)}</b>
           </Ring>
           <div style={{ flex: 1 }}>
-            <b>Bereich gesamt</b>
+            <b style={{ fontSize: 13 }}>Bereich gesamt</b>
             <div className="mut xs">Durchschnitt deiner {area.skills.length} Skills</div>
           </div>
         </div>
         <div className="tiles">
           {area.skills.map((s) => (
             <button key={s.id} className={`tile ${s.id === sk.id ? "on" : ""}`} onClick={() => onSkill(s.id)}>
-              <Ring size={40} width={4} pct={skillProgress(s)} color={area.color}>
-                <b className="xxs">{skillProgress(s)}</b>
+              <Ring size={38} width={4} pct={skillProgress(s)} color={area.color}>
+                <b style={{ fontSize: 10 }}>{skillProgress(s)}</b>
               </Ring>
-              <span>{s.name}</span>
-              {state.focus.includes(s.id) && <em>Fokus</em>}
+              <span>
+                {s.name.split(" ").map((w, i) => (
+                  <span key={i}>
+                    {i > 0 && <br />}
+                    {w}
+                  </span>
+                ))}
+              </span>
             </button>
           ))}
         </div>
-      </Card>
+      </MCard>
 
-      <Card>
+      <MCard variants={ITEM}>
         <div className="row between">
-          <h3>{sk.name}</h3>
-          <span className="big">{pct} %</span>
+          <h3 style={{ fontSize: 15 }}>{sk.name}</h3>
+          <span className="big" style={{ fontSize: 18 }}>
+            {pct} %
+          </span>
         </div>
-        <div className="mut xs" style={{ margin: "2px 0 10px" }}>
+        <div className="mut xs" style={{ margin: "2px 0 8px" }}>
           Soll für {role}: Stufe {soll} von 5
         </div>
-        <div className="subs">
+        <div style={{ display: "grid", gap: 7 }}>
           {sk.subs.map((s) => (
-            <div key={s.id} className="sub">
-              <div className="row between">
-                <span>{s.name}</span>
-                <span className="dots" aria-label={`Stufe ${s.level} von 5, Soll ${soll}`}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <i key={n} className={`${n <= s.level ? "f" : ""} ${n === soll ? "soll" : ""}`} style={n <= s.level ? { background: area.color } : undefined} />
-                  ))}
-                </span>
-              </div>
+            <div key={s.id} className="row between" style={{ fontSize: 11.5 }}>
+              <span>{s.name}</span>
+              <span className="dots" aria-label={`Stufe ${s.level} von 5, Soll ${soll}`}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <i key={n} className={`${n <= s.level ? "f" : ""} ${n === soll ? "soll" : ""}`} style={n <= s.level ? { background: area.color } : undefined} />
+                ))}
+              </span>
             </div>
           ))}
         </div>
-        {sources.length > 0 && <p className="src" style={{ marginTop: 12 }}>Aus {sources.join(" · ")}</p>}
-      </Card>
+      </MCard>
 
-      {learned && sk.id === "praes" && state.phase === "done" && (
-        <div className="noti">
+      {rec && <RecCard r={rec} onClick={() => onRec(rec)} />}
+    </motion.div>
+  );
+}
+
+export function RecCard({ r, onClick, small }: { r: Rec; onClick?: () => void; small?: boolean }) {
+  const hot = r.type === "Üben";
+  const dur = r.meta && r.meta.length <= 14 ? r.meta : r.why && r.why.length <= 14 ? r.why : "";
+  const xp = hot ? 80 : r.type === "Intern" ? 120 : r.type === "Extern" ? 60 : 15;
+  return (
+    <motion.button variants={ITEM} whileTap={onClick ? { scale: 0.98 } : undefined} className={`card sug ${hot ? "hot" : ""} ${small ? "sm" : ""}`} onClick={onClick} disabled={!onClick}>
+      {!small && (
+        <span className={`ck ${hot ? "a" : ""}`}>
+          <Icon name={recIcon(r.type)} size={14} />
+        </span>
+      )}
+      <div className="tx">
+        <span className={`tag ${hot ? "acc" : ""}`}>
+          {recLabel(r.type)}
+          {dur ? ` · ${dur}` : ""}
+        </span>
+        <b>{r.title}</b>
+      </div>
+      {r.fresh ? <span className="xp neu">neu</span> : !small && <span className="xp">+{xp} XP</span>}
+    </motion.button>
+  );
+}
+
+/* ---------------- Lernpfad aktualisiert ---------------- */
+
+export function SkillUpdateView({ state, onBack }: { state: AppState; onBack: () => void }) {
+  const sk = findSkill(state.areas, "praes") as Skill;
+  const pct = skillProgress(sk);
+  const before = state.presentation?.pctBefore ?? pct;
+  const bySource = (src: string) => {
+    const subs = sk.subs.filter((s) => s.sources?.includes(src as never));
+    return subs.length ? Math.round((subs.reduce((a, s) => a + s.level, 0) / (subs.length * 5)) * 100) : 0;
+  };
+  const sources = ["Übung", "Selbst", "Kollegen"].map((s) => ({ name: SOURCE_LABEL[s], v: bySource(s) })).filter((s) => s.v > 0);
+  const recs = sk.recs.filter((r) => r.fresh);
+  const rest = sk.recs.filter((r) => !r.fresh && r.type !== "Üben").slice(0, Math.max(0, 3 - recs.length));
+  return (
+    <motion.div className="scr g8" variants={STAGGER} initial="hidden" animate="show">
+      <div className="hd">
+        <button className="rb" onClick={onBack} aria-label="Zurück">
+          <Icon name="back" />
+        </button>
+        <div className="t">
+          Präsentieren
+          <small>Lernpfad aktualisiert</small>
+        </div>
+      </div>
+      <MCard variants={ITEM} className="row" style={{ gap: 14 }}>
+        <Ring size={70} width={7} pct={pct} color="var(--p1)">
+          <b style={{ fontSize: 17 }}>{pct}</b>
+        </Ring>
+        <div style={{ flex: 1 }}>
+          <span className="xp">+{pct - before} % seit gestern</span>
+          <div className="src-row">
+            {sources.map((s) => (
+              <div key={s.name} className="row">
+                <span>{s.name}</span>
+                <Progress className="h-1.5 flex-1" value={s.v} style={{ ["--c" as string]: "var(--p1)" }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </MCard>
+      {state.memory[0] && (
+        <motion.div variants={ITEM} className="noti" style={{ padding: "10px 12px" }}>
           <span className="ib sm">
             <Icon name="bulb" size={15} />
           </span>
-          <span className="noti-tx">
+          <div style={{ fontSize: 12 }}>
             <b>Kompass hat gelernt</b>
-            <span>{learned}</span>
-          </span>
-        </div>
+            <br />
+            {state.memory[0]}
+          </div>
+        </motion.div>
       )}
-
-      {recs.map((r) => (
-        <div key={r.id} className={`card sug ${r.type === "Üben" ? "hot" : ""}`}>
-          <span className={`ck ${r.type === "Üben" ? "a" : ""}`}>
-            <Icon name={r.type === "Üben" ? "cam" : r.type === "Extern" ? "pin" : r.type === "Ressource" ? "book" : "vid"} size={14} />
-          </span>
-          <span className="tx">
-            <Tag accent={r.type === "Üben"}>
-              {recLabel(r.type)}
-              {r.meta && r.meta.length <= 12 ? ` · ${r.meta}` : r.why && r.why.length <= 14 ? ` · ${r.why}` : ""}
-            </Tag>
-            <b>{r.title}</b>
-          </span>
-          {r.fresh ? <Badge variant="accent">neu</Badge> : <span className="xp">+{r.type === "Üben" ? 80 : r.type === "Intern" ? 120 : 15}</span>}
-        </div>
+      <motion.b variants={ITEM} style={{ fontSize: 13, marginTop: 2 }}>
+        Neue Vorschläge
+      </motion.b>
+      {[...recs, ...rest].slice(0, 3).map((r) => (
+        <RecCard key={r.id} r={r} small />
       ))}
-    </div>
+    </motion.div>
   );
 }
 
 /* ---------------- Team ---------------- */
 
+const PEER_COLORS = ["var(--p1)", "var(--p2)", "var(--p3)"];
+
 export function TeamView({ state }: { state: AppState }) {
   const topic = state.presentation?.topic;
   const got = state.feedbackReceived;
-  const colors = ["var(--p1)", "var(--p2)", "var(--p3)"];
   return (
-    <div className="scr">
+    <motion.div className="scr g8" variants={STAGGER} initial="hidden" animate="show">
       <div className="hd">
         <div className="t">
           Team
-          <small>{got.length && topic ? `Feedback zu „${short(topic, 34)}“` : "Dein Team bei " + COMPANY.short}</small>
+          <small>{got.length && topic ? `Feedback zu „${shortTopic(topic)}“` : "Deine Kollegen mit eigenem Kompass"}</small>
         </div>
-        {got.length > 0 && <Tag accent>{`${got.length} von ${TEAM.length}`}</Tag>}
+        {got.length > 0 && <span className="tag acc">{`${got.length} von ${TEAM.length}`}</span>}
       </div>
       {TEAM.map((t, i) => {
         const fb = got.find((f) => f.name === t.name);
         return (
-          <div key={t.name} className="card fb">
-            <span className="av sm" style={{ background: colors[i] }}>
+          <MCard variants={ITEM} key={t.name} className="fb">
+            <span className="av sm" style={{ background: PEER_COLORS[i] }}>
               {t.initials}
             </span>
             <div>
               <b>
-                {t.name} <span className="mut normal">· {t.role}</span>
+                {t.name} <span className="mut" style={{ fontWeight: 500 }}>· {t.role}</span>
               </b>
-              {fb ? (
-                <>
-                  <span>{fb.text}</span>
-                  <span className="stars" aria-label={`${fb.stars} von 5`}>
-                    {"★".repeat(fb.stars)}
-                    <span className="off">{"★".repeat(5 - fb.stars)}</span>
-                  </span>
-                </>
-              ) : (
-                <span className="mut">Eigener Kompass aktiv · noch kein Feedback</span>
-              )}
+              {fb ? fb.text : <span className="mut">Noch kein Feedback</span>}
             </div>
-          </div>
+          </MCard>
         );
       })}
       <Challenge value={state.teamChallenge} />
-      <p className="mut xs center">Gezählt wird der Teamfortschritt, nicht wer vorne liegt.</p>
-    </div>
+    </motion.div>
   );
 }
 
-function Challenge({ value, week }: { value: number; week?: React.ReactNode }) {
+function Challenge({ value, week, dark }: { value: number; week?: React.ReactNode; dark?: boolean }) {
   const v = Math.min(10, value);
   return (
-    <Card>
+    <MCard variants={ITEM}>
       <div className="row between">
-        <h3>Team-Challenge</h3>
-        <Tag accent={v >= 10}>{v >= 10 ? "geschafft" : "diese Woche"}</Tag>
+        <h3 style={{ fontSize: 14 }}>Team-Challenge</h3>
+        <span className={dark ? "mut xs" : "tag acc"}>{v >= 10 ? "geschafft" : "diese Woche"}</span>
       </div>
-      <div className="mut" style={{ margin: "2px 0 8px" }}>
+      <div className={dark ? "" : "mut"} style={{ margin: dark ? "4px 0 8px" : "2px 0 8px" }}>
         10 Feedbacks im Team diese Woche
       </div>
       <div className="row">
-        <Progress className="flex-1" style={{ ["--c" as string]: "var(--sl)" }} value={v * 10} />
+        <Progress className="flex-1" value={v * 10} style={dark ? { ["--c" as string]: "var(--sl)" } : undefined} />
         <b>{v}/10</b>
       </div>
       {week}
-    </Card>
+    </MCard>
   );
 }
 
 /* ---------------- Erfolge ---------------- */
 
-const BADGE_ICON: Record<string, string> = { start: "logo", generalprobe: "cam", feedback: "team", loop: "orb", mutig: "star" };
+const BADGE_ICON: Record<string, string> = { generalprobe: "cam", feedback: "team", loop: "orb", mutig: "star" };
+const BADGE_LABEL: Record<string, React.ReactNode> = {
+  generalprobe: <>General&shy;probe</>,
+  feedback: (
+    <>
+      Feedback-
+      <br />
+      Sammler
+    </>
+  ),
+  loop: <>Loop ge&shy;schlossen</>,
+  mutig: "Mutig",
+};
 
 export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
   const lvl = levelOf(state.xp);
   const inLevel = state.xp % XP_PER_LEVEL;
-  // Week streak: days of the current (demo) week with any activity.
+  const levelUp = state.badges.includes("loop");
+  const todayIdx = (now.getDay() + 6) % 7;
   const monday = new Date(now);
   monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  const todayIdx = (now.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - todayIdx);
   const active = new Set(
     state.journal
       .map((j) => new Date(j.date))
       .filter((d) => d >= monday)
       .map((d) => (d.getDay() + 6) % 7),
   );
-  // Demo seed: Lena was already active at the start of the week.
-  [0, 1].forEach((d) => d < todayIdx && active.add(d));
+  for (let d = 0; d < Math.min(todayIdx, 3); d++) active.add(d); // Demo: Lena war die Woche schon aktiv
   const days = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const week = (
-    <div className="week">
+    <div className="week" style={{ marginTop: 12 }}>
       {days.map((d, i) => (
         <span key={d} className={`day ${i === todayIdx ? "now" : ""}`}>
           <i className={active.has(i) ? "" : "no"}>
@@ -346,8 +432,9 @@ export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
       ))}
     </div>
   );
+  const ids = ["generalprobe", "feedback", "loop", "mutig"];
   return (
-    <div className="scr">
+    <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
       <div className="hd">
         <div className="t">
           Erfolge
@@ -355,91 +442,42 @@ export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
         </div>
         <span className="av">{initials(state.profile?.name || state.username)}</span>
       </div>
-      <Card className="row" style={{ gap: 14 }}>
-        <Ring size={72} width={7} pct={(inLevel / XP_PER_LEVEL) * 100} color="var(--acc)">
-          <b className="lvl-big">{lvl}</b>
+      <MCard variants={ITEM} className="row" style={{ gap: 14 }}>
+        <Ring size={72} width={7} pct={levelUp ? 100 : (inLevel / XP_PER_LEVEL) * 100} color="var(--acc)">
+          <b style={{ fontSize: 24 }}>{lvl}</b>
         </Ring>
         <div>
-          <Tag accent>{state.badges.includes("loop") ? "Level-Up" : `${state.xp.toLocaleString("de-DE")} XP`}</Tag>
-          <b className="h-md">Level {lvl}</b>
-          <span className="mut">
-            {state.badges.includes("loop") ? "Loop geschlossen: geübt, angewendet, Feedback geholt." : `Noch ${XP_PER_LEVEL - inLevel} XP bis Level ${lvl + 1}.`}
-          </span>
+          <span className="tag acc">{levelUp ? "Level-Up" : `${state.xp.toLocaleString("de-DE")} XP`}</span>
+          <b style={{ fontSize: 16, display: "block", marginTop: 2 }}>{levelUp ? `Level ${lvl} erreicht` : `Level ${lvl}`}</b>
+          <span className="mut">{levelUp ? "Loop geschlossen: geübt, angewendet, Feedback geholt." : `Noch ${XP_PER_LEVEL - inLevel} XP bis Level ${lvl + 1}.`}</span>
         </div>
-      </Card>
-      <Card>
-        <h3 style={{ marginBottom: 10 }}>Badges</h3>
-        <div className="badges">
-          {Object.entries(BADGES).map(([id, b]) => (
-            <motion.span
-              key={id}
-              className={`badge ${state.badges.includes(id) ? "" : "off"}`}
-              title={b.text}
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.05 * Object.keys(BADGES).indexOf(id) }}
-            >
-              <i>
-                <Icon name={BADGE_ICON[id] || "star"} size={22} />
-              </i>
-              {b.name}
-            </motion.span>
-          ))}
+      </MCard>
+      <MCard variants={ITEM}>
+        <h3 style={{ fontSize: 14, marginBottom: 10 }}>Badges</h3>
+        <div className="row between">
+          {ids.map((id, i) => {
+            const on = state.badges.includes(id);
+            return (
+              <motion.span
+                key={id}
+                className={`badge ${on ? "" : "off"}`}
+                style={on && i === 0 ? { ["--c" as string]: "var(--acc)" } : undefined}
+                title={BADGES[id]?.text}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.15 + i * 0.06 }}
+              >
+                <i>
+                  <Icon name={BADGE_ICON[id]} size={22} />
+                </i>
+                {BADGE_LABEL[id]}
+              </motion.span>
+            );
+          })}
         </div>
-      </Card>
-      <Challenge value={state.teamChallenge} week={<div style={{ marginTop: 12 }}>{week}</div>} />
-      {state.memory.length > 0 && (
-        <Card>
-          <h3 style={{ marginBottom: 6 }}>Was Kompass sich merkt</h3>
-          <ul className="plain">
-            {state.memory.slice(0, 3).map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        </Card>
-      )}
-      <Card>
-        <h3 style={{ marginBottom: 6 }}>Erfahrungen</h3>
-        <ul className="journal">
-          {state.journal.slice(0, 5).map((j) => (
-            <li key={j.id}>
-              <span className="tag">{j.kind}</span>
-              <b>{j.title}</b>
-              <span className="mut xs nowrap">
-                {fmtDay(j.date)} · +{j.xp} XP
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-    </div>
-  );
-}
-
-/* ---------------- Unternehmen (im Demo-Menü) ---------------- */
-
-export function CompanyInfo() {
-  return (
-    <div className="company">
-      <p className="mut xs">Demo-Kontext, generiert. Im echten Betrieb pflegt HR/L&amp;D diese Inhalte.</p>
-      <b>{COMPANY.name}</b>
-      <p>{COMPANY.about}</p>
-      <p>Vision: {COMPANY.vision}</p>
-      <b>Fortbildungskatalog</b>
-      <ul className="plain">
-        {CATALOG.map((c) => (
-          <li key={c.title}>
-            {c.title} <span className="mut">· {c.type}</span>
-          </li>
-        ))}
-      </ul>
-      <b>Lernmethoden</b>
-      <ul className="plain">
-        {METHODS.map((m) => (
-          <li key={m}>{m}</li>
-        ))}
-      </ul>
-    </div>
+      </MCard>
+      <Challenge value={state.teamChallenge} week={week} dark />
+    </motion.div>
   );
 }
 
@@ -454,7 +492,6 @@ export function DemoSheet({
   script,
   setScript,
   onReset,
-  onLogout,
 }: {
   open: boolean;
   onClose: () => void;
@@ -464,10 +501,8 @@ export function DemoSheet({
   script: boolean;
   setScript: (v: boolean) => void;
   onReset: () => void;
-  onLogout: () => void;
 }) {
   const [qr, setQr] = useState("");
-  const [showCompany, setShowCompany] = useState(false);
   useEffect(() => {
     if (!open || qr) return;
     QRCode.toString(window.location.origin, { type: "svg", margin: 0, color: { dark: "#17181C", light: "#0000" } })
@@ -479,27 +514,25 @@ export function DemoSheet({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="mx-auto max-h-[88dvh] w-full max-w-[440px] gap-2.5 overflow-y-auto rounded-t-[28px] border-0 bg-background px-4 pt-2.5 pb-6"
+        className="mx-auto w-full max-w-[286px] gap-2.5 rounded-t-[28px] border-0 bg-card px-4 pt-2.5 pb-[18px] text-[13px]"
+        style={{ zoom: "var(--z, 1)" }}
       >
         <i className="grab" />
         <div className="row between">
-          <SheetTitle className="h-md">Demo-Steuerung</SheetTitle>
-          <SheetDescription className="mut xs">nur für den Pitch</SheetDescription>
+          <SheetTitle className="text-[16px] font-bold whitespace-nowrap">Demo-Steuerung</SheetTitle>
+          <SheetDescription className="text-[11px] text-muted-foreground">nur für den Pitch</SheetDescription>
         </div>
-        <div className="row card line">
+        <Card className="row sheet-card">
           <div style={{ flex: 1 }}>
             <b>Zeitsprung</b>
             <div className="mut xs">zu „nach der Präsentation“</div>
           </div>
-          <Button disabled={!canJump} onClick={onJump}>
+          <Button className="h-8" disabled={!canJump} onClick={onJump}>
             Springen
           </Button>
-        </div>
-        <div className="row card line">
-          <div style={{ flex: 1 }}>
-            <b>KI-Modus</b>
-            <div className="mut xs">{live ? "Live mit Claude oder Skript als Fallback" : "Kein API-Key: nur Skript"}</div>
-          </div>
+        </Card>
+        <Card className="row sheet-card">
+          <b style={{ flex: 1 }}>KI-Modus</b>
           <span className="seg">
             <button className={!script && live ? "on" : ""} disabled={!live} onClick={() => setScript(false)}>
               Live
@@ -508,26 +541,17 @@ export function DemoSheet({
               Skript
             </button>
           </span>
-        </div>
-        <div className="row card line" style={{ gap: 12 }}>
+        </Card>
+        <Card className="row sheet-card" style={{ gap: 12 }}>
           {qr ? <span className="qr" dangerouslySetInnerHTML={{ __html: qr }} /> : <span className="qr" />}
           <div style={{ flex: 1 }}>
             <b>QR-Code für die Jury</b>
             <div className="mut xs">Öffnet die App auf dem eigenen Handy</div>
           </div>
-        </div>
-        <Button variant="secondary" onClick={() => setShowCompany((v) => !v)}>
-          {showCompany ? "Firmenkontext ausblenden" : "Firmenkontext ansehen"}
+        </Card>
+        <Button variant="secondary" onClick={onReset}>
+          Profil zurücksetzen
         </Button>
-        {showCompany && <CompanyInfo />}
-        <div className="row" style={{ gap: 8 }}>
-          <Button variant="secondary" className="flex-1" onClick={onReset}>
-            Profil zurücksetzen
-          </Button>
-          <Button variant="secondary" className="flex-1" onClick={onLogout}>
-            Abmelden
-          </Button>
-        </div>
       </SheetContent>
     </Sheet>
   );

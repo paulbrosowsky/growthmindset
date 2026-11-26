@@ -145,30 +145,30 @@ export default function VideoRecorder({ onDone, disabled }: { onDone: (r: VideoR
     }
   }
 
-  if (disabled) return <p className="mut xs">Aufnahme abgeschlossen.</p>;
+  if (disabled) return null;
 
   return (
-    <div className="stack">
-      <div className="vid">
+    <>
+      <div className="vid tall">
         {mode === "live" || mode === "recording" ? (
-          <video ref={videoRef} muted playsInline />
+          <video ref={videoRef} className="mirror" muted playsInline />
         ) : (
-          <svg viewBox="0 0 268 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden>
-            <circle cx="134" cy="84" r="30" fill="#c99a7c" />
-            <path d="M102 78c0-22 14-32 32-32s32 10 32 32c-8-10-18-12-32-12s-24 2-32 12z" fill="#3a2a22" />
-            <path d="M62 200c4-50 32-72 72-72s68 22 72 72z" fill="#e8e3dc" />
+          <svg viewBox="0 0 268 220" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden>
+            <circle cx="134" cy="92" r="30" fill="#c99a7c" />
+            <path d="M102 86c0-22 14-32 32-32s32 10 32 32c-8-10-18-12-32-12s-24 2-32 12z" fill="#3a2a22" />
+            <path d="M62 220c4-50 32-72 72-72s68 22 72 72z" fill="#e8e3dc" />
           </svg>
         )}
         {mode === "recording" && (
-          <span className="rec-badge">
+          <span className="vid-badge">
             <i /> {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
           </span>
         )}
-        {mode === "recording" && live && <span className="live-tx">… {live.slice(-110)}</span>}
-        {mode === "idle" && <span className="live-tx">Sprich zu einer Person hinter der Kamera. 2 bis 3 Minuten reichen.</span>}
-        {mode === "processing" && <span className="live-tx">Standbilder werden ausgewählt …</span>}
+        {mode === "recording" && <span className="vid-tx">{live ? `… ${live.slice(-90)} …` : "Ich höre zu …"}</span>}
+        {mode === "idle" && <span className="vid-tx">Zwei Minuten reichen. Einstieg und Schluss zählen am meisten.</span>}
+        {mode === "processing" && <span className="vid-tx">Standbilder werden ausgewählt …</span>}
       </div>
-      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+      <div className="row" style={{ gap: 8 }}>
         {mode === "idle" && (
           <>
             <Button className="flex-1" onClick={openCamera}>
@@ -176,7 +176,7 @@ export default function VideoRecorder({ onDone, disabled }: { onDone: (r: VideoR
             </Button>
             <Button asChild variant="secondary" className="flex-1">
               <label>
-                <Icon name="upload" size={15} /> Clip hochladen
+                Clip hochladen
                 <input type="file" accept="video/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
               </label>
             </Button>
@@ -194,11 +194,11 @@ export default function VideoRecorder({ onDone, disabled }: { onDone: (r: VideoR
         )}
       </div>
       {mode === "idle" && (
-        <Button variant="link" size="sm" className="self-center text-muted-foreground underline" onClick={() => onDone({ frames: [], transcript: "", duration: 0, demo: true })}>
+        <button className="mut xs" style={{ alignSelf: "center", textDecoration: "underline", textUnderlineOffset: 3 }} onClick={() => onDone({ frames: [], transcript: "", duration: 0, demo: true })}>
           Ohne Kamera: Beispiel-Analyse zeigen
-        </Button>
+        </button>
       )}
       {error && <p className="error xs">{error}</p>}
-    </div>
+    </>
   );
 }

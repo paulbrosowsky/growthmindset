@@ -50,6 +50,8 @@ export type Presentation = {
   atLabel?: string;
   practiced?: boolean;
   followedUp?: boolean;
+  pctBefore?: number;
+  durationSec?: number;
 };
 
 export type MsgKind =
@@ -65,7 +67,9 @@ export type MsgKind =
   | "video"
   | "note"
   | "update"
-  | "analyzing";
+  | "analyzing"
+  | "link"
+  | "xpline";
 
 export type Msg = {
   id: string;

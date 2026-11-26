@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/shadcn/badge";
-import { Button } from "@/components/shadcn/button";
-import { Card } from "@/components/shadcn/card";
-import { TEAM } from "@/lib/knowledge";
-import type { PeerFeedback, Slide } from "@/lib/types";
 import { motion } from "motion/react";
-import { Icon, Ring, Tag, ITEM, MCard, STAGGER } from "./ui";
+import { Button } from "@/components/shadcn/button";
+import type { Slide } from "@/lib/types";
+import { Icon, ITEM, MCard, Ring, STAGGER } from "./ui";
 
 export function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -35,6 +32,7 @@ const KIND: Record<string, { icon: string; tag: string; xp: number }> = {
   practice: { icon: "cam", tag: "Üben", xp: 80 },
 };
 
+/** Drei Wege (Konzept-Screen 5): Üben ist die stärkste Karte. */
 export function OptionsCard({
   options,
   onPick,
@@ -47,11 +45,11 @@ export function OptionsCard({
       {options.map((o, i) => {
         const k = KIND[o.kind] || KIND.video;
         const hot = o.kind === "practice";
+        const dur = o.detail && o.detail.length <= 14 ? ` · ${o.detail}` : "";
         return (
           <motion.button
             key={i}
             variants={ITEM}
-            whileHover={onPick ? { y: -2 } : undefined}
             whileTap={onPick ? { scale: 0.97 } : undefined}
             className={`card sug ${hot ? "hot" : ""}`}
             disabled={!onPick}
@@ -60,12 +58,13 @@ export function OptionsCard({
             <span className={`ck ${hot ? "a" : ""}`}>
               <Icon name={k.icon} size={14} />
             </span>
-            <span className="tx">
-              <Tag accent={hot}>
-                {k.tag} · {o.detail}
-              </Tag>
+            <div className="tx">
+              <span className={`tag ${hot ? "acc" : ""}`}>
+                {k.tag}
+                {dur}
+              </span>
               <b>{o.title}</b>
-            </span>
+            </div>
             <span className="xp">+{k.xp}</span>
           </motion.button>
         );
@@ -74,243 +73,97 @@ export function OptionsCard({
   );
 }
 
+const BAR_COLORS = ["var(--p1)", "var(--p2)", "var(--p3)"];
+const BAR_WIDTHS = [80, 55, 35];
+
+/** Folienentwurf (Konzept-Screen 6): eine Folie, Punkte, Sprechernotiz. */
 export function SlidesCard({ slides }: { slides: Slide[] }) {
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(slides.length > 1 ? 1 : 0);
   const s = slides[i];
   if (!s) return null;
   return (
-    <Card className="slides">
-      <div className="slide-face">
-        <Tag accent>
+    <MCard style={{ padding: 10 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <button className="slide-face" style={{ width: "100%", textAlign: "left" }} onClick={() => setI((i + 1) % slides.length)} aria-label="Nächste Folie">
+        <span className="tag acc">
           Folie {i + 1} von {slides.length}
-        </Tag>
-        <b>{s.title}</b>
-        <ul>
-          {s.bullets.map((b, j) => (
-            <li key={j}>{b}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="row between" style={{ margin: "8px 0 6px" }}>
-        <button className="rb sm" disabled={i === 0} onClick={() => setI(i - 1)} aria-label="Vorherige Folie">
-          <Icon name="back" size={14} />
-        </button>
-        <span className="dots">
-          {slides.map((_, j) => (
-            <i key={j} className={j === i ? "f acc" : ""} onClick={() => setI(j)} />
-          ))}
         </span>
-        <button className="rb sm" disabled={i === slides.length - 1} onClick={() => setI(i + 1)} aria-label="Nächste Folie">
-          <Icon name="chev" size={14} />
-        </button>
+        <b>{s.title}</b>
+        <div className="pts">
+          {s.bullets.slice(0, 3).map((b, j) => (
+            <div key={j} className="row">
+              <span>{b}</span>
+              <div className="bar s6" style={{ flex: 1 }}>
+                <motion.i
+                  style={{ display: "block", height: "100%", borderRadius: 9, background: BAR_COLORS[j] }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${BAR_WIDTHS[j]}%` }}
+                  transition={{ type: "spring", stiffness: 60, damping: 18, delay: 0.1 * j }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </button>
+      <div className="dots pager" style={{ justifyContent: "center", margin: "8px 0 6px", display: "flex" }}>
+        {slides.map((_, j) => (
+          <i key={j} className={j === i ? "cur" : ""} onClick={() => setI(j)} />
+        ))}
       </div>
-      <div className="xs-text">
+      <div style={{ fontSize: 11.5 }}>
         <b>Sprechernotiz:</b> {s.note}
       </div>
-    </Card>
+    </MCard>
   );
 }
 
-export function FeedbackCard({
-  good,
-  improve,
-  tip,
-  frames,
-  before,
-  after,
-}: {
-  good: string[];
-  improve: string[];
-  tip: string;
-  frames?: number;
-  before?: number;
-  after?: number;
-}) {
+/** Kollegen fragen (Konzept-Screen 9). */
+export function PeerAskCard({ done, onSend, names }: { done?: boolean; onSend: (ok: boolean) => void; names: string[] }) {
+  if (done) return null;
   return (
-    <motion.div className="stack" variants={STAGGER} initial="hidden" animate="show">
-      <MCard variants={ITEM} className="fb">
-        <span className="ck">
-          <Icon name="check" size={14} />
-        </span>
-        <div>
-          <b>Das lief gut</b>
-          {good.map((g, i) => (
-            <span key={i}>{g}</span>
-          ))}
-        </div>
-      </MCard>
-      <MCard variants={ITEM} className="fb">
-        <span className="ck a">
-          <Icon name="up" size={14} />
-        </span>
-        <div>
-          <b>Daran feilen</b>
-          {improve.map((g, i) => (
-            <span key={i}>{g}</span>
-          ))}
-        </div>
-      </MCard>
-      <MCard variants={ITEM} className="fb">
-        <span className="ck">
-          <Icon name="bulb" size={14} />
-        </span>
-        <div>
-          <b>Tipp für morgen</b>
-          <span>{tip}</span>
-        </div>
-      </MCard>
-      {after != null && (
-        <MCard variants={ITEM} className="row between tight">
-          <span className="row" style={{ gap: 8 }}>
-            <Ring size={40} width={4} pct={after} color="var(--p1)">
-              <b className="xxs">{after}</b>
-            </Ring>
-            <span>
-              <b>Präsentieren</b>
-              <br />
-              <span className="mut xs">vorher {before} %</span>
-            </span>
-          </span>
-          <span className="xp big-xp">+80 XP</span>
-        </MCard>
-      )}
+    <motion.div className="row" style={{ gap: 8 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+      <Button className="flex-1" onClick={() => onSend(true)} aria-label={`Ja, ${names.join(", ")} anfragen`}>
+        Ja, anfragen
+      </Button>
+      <Button variant="secondary" onClick={() => onSend(false)}>
+        Später
+      </Button>
     </motion.div>
   );
 }
 
-export function PeerAskCard({ done, onSend }: { done?: boolean; onSend: (names: string[] | null) => void }) {
+/** Kurzer Hinweis mit Sprung in einen anderen Bereich der App. */
+export function LinkCard({ icon, title, sub, onOpen }: { icon: string; title: string; sub?: string; onOpen: () => void }) {
   return (
-    <div className="stack">
-      <div className="row avatars">
-        {TEAM.map((t, i) => (
-          <span key={t.name} className="av sm" style={{ background: ["var(--p1)", "var(--p2)", "var(--p3)"][i] }} title={`${t.name}, ${t.role}`}>
-            {t.initials}
-          </span>
-        ))}
-        <span className="mut xs">{TEAM.map((t) => t.name.split(" ")[0]).join(", ")}</span>
-      </div>
-      {!done && (
-        <div className="row" style={{ gap: 8 }}>
-          <Button className="flex-1" onClick={() => onSend(TEAM.map((t) => t.name))}>
-            Ja, anfragen
-          </Button>
-          <Button variant="secondary" onClick={() => onSend(null)}>
-            Später
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function PeerCard({ f }: { f: PeerFeedback }) {
-  const i = TEAM.findIndex((x) => x.name === f.name);
-  const t = TEAM[i];
-  return (
-    <Card className="fb">
-      <span className="av sm" style={{ background: ["var(--p1)", "var(--p2)", "var(--p3)"][i] || "var(--sl)" }}>
-        {t?.initials || f.name.slice(0, 2)}
+    <motion.button className="card sug" onClick={onOpen} whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <span className="ck">
+        <Icon name={icon} size={14} />
       </span>
-      <div>
-        <b>
-          {f.name} <span className="mut normal">· {t?.role}</span>
-        </b>
-        <span>{f.text}</span>
-        <span className="stars" aria-label={`${f.stars} von 5 Sternen`}>
-          {"★".repeat(f.stars)}
-          <span className="off">{"★".repeat(5 - f.stars)}</span>
-        </span>
+      <div className="tx">
+        {sub && <span className="tag">{sub}</span>}
+        <b>{title}</b>
       </div>
-    </Card>
+      <Icon name="send" className="mut" />
+    </motion.button>
   );
 }
 
-export function UpdateCard({
-  before,
-  after,
-  learned,
-  recs,
-}: {
-  before: number;
-  after: number;
-  learned?: string;
-  recs: { type: string; title: string; why: string }[];
-}) {
+/** Abschluss des Onboardings: Fokus-Skills als Ringe. */
+export function SummaryCard({ focus }: { focus: { name: string; pct: number; color?: string }[] }) {
   return (
-    <motion.div className="stack" variants={STAGGER} initial="hidden" animate="show">
-      <MCard variants={ITEM} className="row" style={{ gap: 14 }}>
-        <Ring size={70} width={7} pct={after} color="var(--p1)">
-          <b className="h-md">{after}</b>
-        </Ring>
-        <div style={{ flex: 1 }}>
-          <b>Präsentieren</b>
-          <span className="xp" style={{ display: "block" }}>
-            +{after - before} % durch diese Erfahrung
-          </span>
-        </div>
-      </MCard>
-      {learned && (
-        <motion.div variants={ITEM} className="noti">
-          <span className="ib sm">
-            <Icon name="bulb" size={15} />
-          </span>
-          <span className="noti-tx">
-            <b>Kompass hat gelernt</b>
-            <span>{learned}</span>
-          </span>
-        </motion.div>
-      )}
-      <motion.b variants={ITEM} className="sect">
-        Neue Vorschläge
-      </motion.b>
-      {recs.slice(0, 2).map((r, i) => (
-        <motion.div key={i} variants={ITEM} className={`card sug ${r.type === "Üben" ? "hot" : ""}`}>
-          <span className="tx">
-            <Tag accent={r.type === "Üben"}>
-              {r.type === "Intern" ? "Lernen" : r.type}
-              {r.why && r.why.length <= 14 ? ` · ${r.why}` : ""}
-            </Tag>
-            <b>{r.title}</b>
-          </span>
-          <Badge variant="accent">neu</Badge>
-        </motion.div>
-      ))}
-    </motion.div>
-  );
-}
-
-const LOOP = ["Geübt", "Angewendet", "Reflektiert", "Feedback", "Neue Ziele"];
-
-export function LoopCard() {
-  return (
-    <Card className="loop">
-      <b>Learning Loop geschlossen</b>
-      <div className="chips">
-        {LOOP.map((l) => (
-          <Badge key={l} className="gap-1 px-2.5 py-1">
-            <Icon name="check" size={13} />
-            {l}
-          </Badge>
-        ))}
+    <MCard style={{ padding: 12 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="mut xs" style={{ marginBottom: 8 }}>
+        Deine Fokus-Skills
       </div>
-    </Card>
-  );
-}
-
-export function SummaryCard({ name, focus }: { name: string; focus: { name: string; pct: number; color?: string }[] }) {
-  return (
-    <Card>
-      <span className="mut xs">Lernpfad für {name} erstellt · deine Fokus-Skills</span>
-      <div className="tiles" style={{ marginTop: 8 }}>
-        {focus.map((f) => (
-          <div key={f.name} className="tile">
-            <Ring size={40} width={4} pct={f.pct} color={f.color || "var(--p1)"}>
-              <b className="xxs">{f.pct}</b>
+      <div className="tiles">
+        {focus.map((f, i) => (
+          <div key={f.name} className={`tile ${i === 0 ? "on" : ""}`}>
+            <Ring size={38} width={4} pct={f.pct} color={f.color || "var(--p1)"}>
+              <b style={{ fontSize: 10 }}>{f.pct}</b>
             </Ring>
             <span>{f.name}</span>
           </div>
         ))}
       </div>
-    </Card>
+    </MCard>
   );
 }

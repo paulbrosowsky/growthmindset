@@ -25,7 +25,7 @@ export const fallback = {
   },
   prep(topic: string, progress: number): PrepOut {
     return {
-      text: `Deine Struktur ist schon solide (${progress} %). Drei Wege bis morgen, du entscheidest:`,
+      text: `Gut, dass du dich meldest! Deine Struktur ist schon solide. Drei Wege bis morgen, du entscheidest:`,
       options: [
         { kind: "video", title: "Grundlagen der Präsentationsstruktur", detail: "12 min" },
         { kind: "read", title: "Folienvorlage und Leitfaden", detail: "15 min" },
@@ -42,9 +42,9 @@ export const fallback = {
           note: "Mit einer Kundengeschichte starten, nicht mit der Agenda.",
         },
         {
-          title: "Wo wir stehen",
-          bullets: ["Die Kennzahl, die zählt", "Plan gegen Ist", "Was besser lief"],
-          note: "Mit der Kernzahl starten. Dann kurz Pause.",
+          title: "Q4: drei Prioritäten",
+          bullets: ["Releases", "App-Steuerung", "Service"],
+          note: "Mit der Kernzahl starten: 30 % schneller zum Release. Dann kurz Pause.",
         },
         {
           title: "Die Story hinter den Zahlen",
@@ -66,9 +66,9 @@ export const fallback = {
   },
   video(): VideoOut {
     return {
-      good: ["Klarer Einstieg, ruhiges Tempo."],
-      improve: ["Mehr Blickkontakt, bei den Zahlen langsamer."],
-      tip: "Morgen früh nur Einstieg und Schluss laut üben.",
+      good: ["Kernbotschaft steht in den ersten 10 Sekunden."],
+      improve: ["Viele Füllwörter. Bei Bild 3 Blick auf den Laptop statt ins Publikum."],
+      tip: "Vor der Kernzahl einatmen und zwei Sekunden Pause.",
       levelChanges: [
         { sub: "koerper", level: 3, reason: "Generalprobe mit Videoanalyse" },
         { sub: "story", level: 3, reason: "Storyline mit Slides erarbeitet" },
@@ -77,14 +77,14 @@ export const fallback = {
   },
   react(mood: string): TextOut {
     if (/schwierig|schlecht|nicht/i.test(mood))
-      return { text: "Danke für deine Ehrlichkeit. Was hat trotzdem gut geklappt?" };
+      return { text: "Danke für deine Ehrlichkeit. Was lief gut, was war schwierig?" };
     if (/gemischt|so lala|okay/i.test(mood))
-      return { text: "Ehrliche Antwort. Was hat gut geklappt?" };
-    return { text: "Super, die Generalprobe hat sich gelohnt! Was lief besonders gut?" };
+      return { text: "Danke. Was lief gut, was war schwierig?" };
+    return { text: "Freut mich! Was lief gut, was war schwierig?" };
   },
   reflect(): TextOut {
     return {
-      text: "Stark, daran hast du gearbeitet. Rückfragen sind trainierbar: wiederholen, atmen, antworten.",
+      text: "Stark, dass du es durchgezogen hast! Rückfragen lassen sich üben.",
     };
   },
   peers(names: string[]): PeersOut {
@@ -92,24 +92,24 @@ export const fallback = {
       {
         name: "Jonas Krüger",
         stars: 4,
-        text: "Roter Faden klar, die Kundenstory hat alle abgeholt.",
+        text: "Die Roadmap-Folie war sofort klar. Die Zahlen hätte ich gern größer gesehen.",
       },
       {
         name: "Aylin Demir",
         stars: 5,
-        text: "Sicherer Auftritt. Vor Antworten kurz Pause machen.",
+        text: "Ruhiger Einstieg, gute Story. Beim Budget hast du schneller gesprochen.",
       },
       {
         name: "Markus Weber",
         stars: 4,
-        text: "Kernbotschaft kam an. Rückfragen souveräner moderieren.",
+        text: "Starker roter Faden. Bei Rückfragen ruhig kurz Pause machen.",
       },
     ];
     return { feedback: all.filter((f) => names.includes(f.name)) };
   },
   synth(): SynthOut {
     return {
-      summary: "Gut angekommen. Nächster Hebel: Rückfragen.",
+      summary: "Dein Lernpfad ist aktualisiert. Nächster Hebel: Rückfragen.",
       levelChanges: [
         { sub: "story", level: 4, reason: "Kundenstory kam laut Kollegen sehr gut an" },
         { sub: "koerper", level: 4, reason: "Sicherer Auftritt und Blickkontakt (Aylin)" },
@@ -117,12 +117,11 @@ export const fallback = {
       ],
       recommendations: [
         { type: "Intern", title: "Souverän mit Rückfragen umgehen", why: "45 min" },
-        { type: "Üben", title: "Fragerunde im Team-Weekly moderieren", why: "diese Woche" },
         { type: "Extern", title: "Rhetorik-Stammtisch Stuttgart", why: "monatlich" },
       ],
       memory: [
+        "Bei Rückfragen sprichst du schneller. Erst zwei Sekunden Pause.",
         "Einstieg mit Kundenstory wirkt",
-        "Bei Rückfragen zu schnell",
         "Lernt gut mit Video-Generalprobe",
       ],
     };
