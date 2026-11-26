@@ -1,6 +1,6 @@
 // Demo-Unternehmenskontext: DRK-Kreisverband Musterstadt e. V. (fiktiv, siehe docs/DRK_Personalentwicklung_Demodaten.md).
 // In einem echten Betrieb pflegt die Personalentwicklung diese Daten.
-import type { AppState, Area, Rec, Skill } from "./types";
+import type { AppState, Area, ChallengeKind, GoalPathState, PathChallenge, Rec, Skill } from "./types";
 import { SAA_SOURCE, SAA_TOC } from "./saa";
 
 /** Kompetenzstufen des Kreisverbands (1 bis 4). Teilkompetenzen nutzen dieselbe Skala, 0 = noch nicht bewertet. */
@@ -334,9 +334,9 @@ export const mandatoryFor = (role?: string) => {
 
 /* ---------- Persönliche Ziele: Lernpfad mit Challenges ---------- */
 
-export type ChallengeKind = "Lernen" | "Üben" | "Anwenden" | "Reflexion";
+export type { ChallengeKind } from "./types";
 /** refs: Titel aus den SAA und BPR 2025, auf die sich die Challenge stützt (siehe lib/saa.ts). */
-export type Challenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string; refs?: string[] };
+export type Challenge = PathChallenge;
 
 export const CHALLENGE_XP: Record<ChallengeKind, number> = { Lernen: 30, Üben: 60, Anwenden: 80, Reflexion: 40 };
 
@@ -393,11 +393,36 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
   },
 };
 
-/** Challenge zu einem Titel (z. B. aus „Hilf mir, die Challenge „…“ vorzubereiten“). */
-export const findChallenge = (title: string) =>
-  Object.values(GOAL_PATHS)
-    .flatMap((p) => p.challenges)
-    .find((c) => title.includes(c.title));
+/** Challenge zu einem Titel (z. B. aus „Hilf mir, die Challenge „…“ vorzubereiten“), auch aus dem persönlichen Pfad. */
+export const findChallenge = (title: string, own?: GoalPathState) =>
+  [...(own?.challenges ?? []), ...Object.values(GOAL_PATHS).flatMap((p) => p.challenges)].find((c) => title.includes(c.title));
+
+/** Demo-Pfad als persönlicher Lernpfad (Skript-Modus, ohne KI oder wenn die KI nichts Brauchbares liefert). */
+export function demoPath(goal?: string): GoalPathState {
+  const key = goalPathKey(goal);
+  return { title: GOAL_PATHS[key].title, challenges: GOAL_PATHS[key].challenges.map((c) => ({ ...c })), source: "demo" };
+}
+
+export const PATH_AREAS = ["fach", "meth", "komm", "selbst"];
+export const PATH_MAX = 14;
+
+/** Neue Challenge aus dem Chat einsortieren: hinter die nächste offene, vor die Abschluss-Reflexion. */
+export function addToPath(path: GoalPathState, c: PathChallenge, done: string[]): GoalPathState {
+  if (path.challenges.some((x) => x.title.toLowerCase() === c.title.toLowerCase())) return path;
+  const list = [...path.challenges];
+  const cur = list.findIndex((x) => !done.includes(x.id));
+  let at = cur < 0 ? list.length : cur + 1;
+  const last = list[list.length - 1];
+  if (last?.kind === "Reflexion" && at >= list.length) at = list.length - 1;
+  list.splice(at, 0, c);
+  // Zu lang: die älteste offene Challenge ohne Chat-Bezug weiter hinten fällt raus, nie die neue.
+  while (list.length > PATH_MAX) {
+    const i = list.findLastIndex((x, k) => k > at && !x.fromChat && !done.includes(x.id) && x.kind !== "Reflexion");
+    if (i < 0) break;
+    list.splice(i, 1);
+  }
+  return { ...path, challenges: list };
+}
 
 export const goalPathKey = (goal?: string): PathKey => {
   const g = goal || "";

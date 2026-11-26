@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { askJSON, hasKey, MODEL } from "@/lib/claude";
 import { fallback, type OnboardOut } from "@/lib/fallbacks";
 import { saaExcerpt } from "@/lib/saaServer";
-import { findChallenge, findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
+import { CATALOG, demoPath, findChallenge, findSkill, MANDATORY_DONE_DEFAULT, mandatoryFor, PATH_AREAS, roleFor, skillLevel, skillProgress, trainingFor } from "@/lib/knowledge";
+import { SAA_TOC } from "@/lib/saa";
+import type { PathChallenge } from "@/lib/types";
 import type { AppState } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -71,6 +73,13 @@ function context(s: AppState): string {
   if (open.length) lines.push(`Offene oder abgelaufene Pflichtschulungen: ${open.map((m) => `${m.id} ${m.title}`).join(", ")}`);
   if (s.journal.length)
     lines.push("Letzte Erfahrungen:\n" + s.journal.slice(0, 6).map((j) => `- ${j.kind}: ${j.title}${j.detail ? ` (${j.detail})` : ""}`).join("\n"));
+  if (s.goalPath?.challenges.length) {
+    const done = s.pathDone ?? [];
+    lines.push(
+      `Persönlicher 4-Wochen-Lernpfad „${s.goalPath.title}“ (Challenges in Reihenfolge):\n` +
+        s.goalPath.challenges.map((c) => `- ${done.includes(c.id) ? "[erledigt] " : ""}${c.title} (${c.kind}, ${c.min} min)${c.fromChat ? " – im Chat gesetzt" : ""}`).join("\n"),
+    );
+  }
   if (s.memory.length) lines.push("Was du dir über die Person gemerkt hast:\n" + s.memory.map((m) => `- ${m}`).join("\n"));
   if (s.presentation) lines.push(`Anstehende Präsentation: ${s.presentation.topic}${s.presentation.atLabel ? `, ${s.presentation.atLabel}` : ""}.`);
   return lines.join("\n\n");
@@ -96,6 +105,24 @@ export async function POST(req: NextRequest) {
   const name = state.profile?.name || "die Person";
   const praes = findSkill(state.areas, "praes");
   const praesPct = praes ? skillProgress(praes) : 50;
+
+  const KINDS = ["Lernen", "Üben", "Anwenden", "Reflexion"];
+  const chalSchema = obj({ area: { type: "string", enum: PATH_AREAS }, title: str, kind: { type: "string", enum: KINDS }, min: { type: "integer" }, text: str, refs: strArr });
+  const saaTitles = new Set(SAA_TOC.map((e) => e.title));
+  const cleanChal = (c: Omit<PathChallenge, "id">, id: string, fromChat = false): PathChallenge | null => {
+    const title = (c.title || "").trim().replace(/[.!]$/, "");
+    if (!title || title.split(/\s+/).length > 9) return null;
+    return {
+      id,
+      area: PATH_AREAS.includes(c.area) ? c.area : "fach",
+      title,
+      kind: KINDS.includes(c.kind) ? c.kind : "Anwenden",
+      min: Math.max(5, Math.min(60, Math.round(c.min || 15))),
+      text: (c.text || "").trim(),
+      refs: (c.refs || []).filter((r) => saaTitles.has(r)).slice(0, 2),
+      ...(fromChat ? { fromChat } : {}),
+    };
+  };
 
   const run = async () => {
     switch (task) {
@@ -210,18 +237,34 @@ export async function POST(req: NextRequest) {
         );
         return out ?? fallback.synth();
       }
+      case "path": {
+        // Persönlicher 4-Wochen-Lernpfad aus dem Onboarding: PLAN, EXPLORE, EXPERIMENT, REFLECT.
+        const p = state.profile;
+        const fb = demoPath(p?.card?.goal || p?.goal);
+        if (!p) return fb;
+        const out = await ask<{ title: string; challenges: Omit<PathChallenge, "id">[] }>(
+          `${ctx}\n\nFortbildungskatalog: ${CATALOG.map((c) => `${c.id} ${c.title} (${c.duration})`).join("; ")}\nTitel in den SAA und BPR 2025 (für refs, nur exakt so): ${SAA_TOC.map((e) => e.title).join(" | ")}\n\nErstelle den persönlichen Lernpfad für die nächsten 4 Wochen zum vereinbarten Lernziel „${p.card?.goal || p.goal}“. Er führt von Planen über Erkunden und Ausprobieren im Arbeitsalltag bis zur Reflexion.\ntitle: das Ziel als kurze Frage oder Aussage in Du-Form, max. 8 Wörter, ohne „In 4 Wochen“.\nchallenges: 8 bis 10 kleine Schritte in sinnvoller Reihenfolge, die letzte ist eine Reflexion. Jede passt zu Rolle, Lernweise („${p.preference}“) und Zeitrahmen („${p.time || "offen"}“) und baut auf Kompetenzlücken laut Jobprofil auf, wo es zum Ziel passt.\n- area: fach (Fachkompetenz), meth (Methodenkompetenz), komm (Sozialkompetenz) oder selbst (Selbstkompetenz); mindestens zwei verschiedene.\n- title: max. 6 Wörter, konkret, ohne Punkt.\n- kind: Lernen, Üben, Anwenden oder Reflexion. min: realistische Minuten (5 bis 60).\n- text: 1 kurzer Satz, was genau zu tun ist, max. 14 Wörter.\n- refs: 0 bis 2 passende Titel aus den SAA und BPR, nur wenn fachlich passend, sonst leer. Eine Fortbildung aus dem Katalog darf als Anmelde-Schritt vorkommen (mit ID im Titel).`,
+          obj({ title: str, challenges: { type: "array", items: chalSchema } }),
+          { maxTokens: 3000 },
+        );
+        const list = (out?.challenges || []).map((c, i) => cleanChal(c, `g${i + 1}`)).filter(Boolean) as PathChallenge[];
+        if (!out || list.length < 6) return fb;
+        return { title: (out.title || "").trim().replace(/^in 4 wochen[:,]?\s*/i, "") || fb.title, challenges: list.slice(0, 12), source: "ai" as const };
+      }
       case "chat": {
         const history: { from: string; text: string }[] = payload.history || [];
         // Fachliche Grundlage: passende Seiten aus SAA und BPR 2025 (Challenge-Verweise, Begriffe im Chat).
         const recent = [payload.text, ...history.slice(-4).map((h) => h.text)].join(" ");
-        const chal = findChallenge(recent);
+        const chal = findChallenge(recent, state.goalPath);
         const saa = saaExcerpt({ refs: chal?.refs, text: recent, maxChars: 8000 });
-        const out = await ask<{ text: string }>(
-          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\n${chal ? `Es geht um die Challenge „${chal.title}“ (${chal.kind}): ${chal.text}${/wissenscheck/i.test(chal.title) ? " Stell genau eine Frage pro Nachricht, warte die Antwort ab, gib kurz Rückmeldung mit Quelle und stell dann die nächste." : ""}\n` : ""}${saa ? `\n${saa}\n\nFachliche Aussagen nur auf Basis dieser Auszüge und mit Quelle (z. B. „BPR Polytrauma, S. 153“). Keine Dosierungen aus dem Gedächtnis.\n` : ""}\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Jobprofil und Kompetenzlücken, Fortbildungen und Pflichtschulungen des Kreisverbands oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
-          obj({ text: str }),
+        const out = await ask<{ text: string; goal: Omit<PathChallenge, "id"> }>(
+          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\n${chal ? `Es geht um die Challenge „${chal.title}“ (${chal.kind}): ${chal.text}${/wissenscheck/i.test(chal.title) ? " Stell genau eine Frage pro Nachricht, warte die Antwort ab, gib kurz Rückmeldung mit Quelle und stell dann die nächste." : ""}\n` : ""}${saa ? `\n${saa}\n\nFachliche Aussagen nur auf Basis dieser Auszüge und mit Quelle (z. B. „BPR Polytrauma, S. 153“). Keine Dosierungen aus dem Gedächtnis.\n` : ""}\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Jobprofil und Kompetenzlücken, Fortbildungen und Pflichtschulungen des Kreisverbands oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.\ngoal: Nur wenn ${name} sich in der neuen Nachricht selbst ein konkretes Ziel oder Vorhaben setzt oder deinem vorgeschlagenen Schritt ausdrücklich zustimmt („mach ich“, „ich will … üben“), dieses Vorhaben als Challenge für den Lernpfad (area, title max. 6 Wörter, kind, min, text max. 14 Wörter, refs wie oben oder leer). Sonst alle Felder leer bzw. min 0. Wenn du ein Ziel übernimmst, sag im text kurz, dass es jetzt im Lernpfad steht.`,
+          obj({ text: str, goal: chalSchema }),
           { maxTokens: 1500 },
         );
-        return out ?? fallback.chat();
+        if (!out) return fallback.chat(payload.text);
+        const goal = out.goal?.title ? cleanChal(out.goal, `c${Date.now().toString(36)}`, true) : null;
+        return { text: out.text, goal };
       }
       default:
         return null;

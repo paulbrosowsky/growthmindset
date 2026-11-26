@@ -13,6 +13,14 @@ export type Rec = {
   fresh?: boolean;
 };
 
+export type ChallengeKind = "Lernen" | "Üben" | "Anwenden" | "Reflexion";
+
+/** Challenge im Lernpfad. refs: Titel aus den SAA und BPR 2025. fromChat: im Chat als Ziel gesetzt. */
+export type PathChallenge = { id: string; area: string; title: string; kind: ChallengeKind; min: number; text: string; refs?: string[]; fromChat?: boolean };
+
+/** Persönlicher Lernpfad: nach dem Onboarding erzeugt, im Chat erweitert. */
+export type GoalPathState = { title: string; challenges: PathChallenge[]; source: "ai" | "demo" };
+
 export type Skill = { id: string; name: string; subs: Sub[]; recs: Rec[] };
 
 export type Area = { id: string; name: string; color: string; skills: Skill[] };
@@ -109,6 +117,8 @@ export type AppState = {
   badges: string[];
   /** Erledigte Pflichtfortbildungen (IDs) */
   mandatoryDone?: string[];
+  /** Persönlicher Lernpfad (fehlt bei älteren Profilen: dann Demo-Pfad passend zum Ziel) */
+  goalPath?: GoalPathState;
   /** Erledigte Challenges im Lernpfad (IDs) */
   pathDone?: string[];
   /** Gelesene SOPs (IDs) */

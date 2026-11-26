@@ -1,5 +1,5 @@
 // Scripted answers used when the Claude API is not configured or does not answer in time.
-import type { LevelChange, PeerFeedback, Profile, Rec, Slide } from "./types";
+import type { LevelChange, PathChallenge, PeerFeedback, Profile, Rec, Slide } from "./types";
 
 export type WelcomeOut = { summary: string; focus: string[]; firstStep: string };
 export type PrepOut = { text: string; options: { kind: "video" | "read" | "practice"; title: string; detail: string }[] };
@@ -8,6 +8,29 @@ export type VideoOut = { good: string[]; improve: string[]; tip: string; levelCh
 export type OnboardOut = { reaction: string; followUp: string; nextQuestion?: string; suggestions?: string[] };
 export type ProfileOut = { intro: string; wer: string[]; was: string[]; wie: string[]; goal: string };
 export type TextOut = { text: string };
+export type ChatOut = { text: string; goal?: PathChallenge | null };
+
+/** Skript-Modus: erkennt „Ich will …“, „Mein Ziel ist …“ und macht daraus eine Challenge für den Lernpfad. */
+export function goalFromText(text: string): PathChallenge | null {
+  const m = text.match(/(?:ich (?:will|möchte|werde|nehme mir vor,?|versuche)|mein (?:nächstes )?ziel(?: ist)?:?|ich setze mir (?:das ziel,?)?)\s+(.{4,90})/i);
+  if (!m) return null;
+  let t = m[1].split(/[.!?;\n]| – | - /)[0].replace(/^(zu|dass ich|,)\s+/i, "").replace(/\s+(zu )?(machen|tun)$/i, "").trim();
+  t = t.replace(/^(diese|nächste|kommende) woche\s+|^(heute|morgen|bald|demnächst)\s+/i, "").trim();
+  if (/^(wissen|fragen|sagen|kurz|nur|mal)\b/i.test(t)) return null;
+  const words = t.split(/\s+/);
+  if (words.length < 2) return null;
+  t = words.slice(0, 7).join(" ");
+  t = t[0].toUpperCase() + t.slice(1);
+  const area = /atem|stress|pause|schlaf|resil|belast|erhol|grenze/i.test(t)
+    ? "selbst"
+    : /team|crew|gespräch|feedback|kolleg|übergabe|ansprech|nachbesprech/i.test(t)
+      ? "komm"
+      : /protokoll|doku|leitfaden|checkliste|struktur|plan|debrief/i.test(t)
+        ? "meth"
+        : "fach";
+  const kind = /üb|train|probier|simulier/i.test(t) ? "Üben" : /les|lern|anschau|versteh|wiederhol/i.test(t) ? "Lernen" : /reflekt|nachdenk/i.test(t) ? "Reflexion" : "Anwenden";
+  return { id: `c${Date.now().toString(36)}`, area, title: t, kind, min: 15, text: `Dein Vorhaben aus dem Chat: ${t}.`, fromChat: true };
+}
 export type PeersOut = { feedback: PeerFeedback[] };
 export type SynthOut = {
   summary: string;
@@ -160,7 +183,9 @@ export const fallback = {
       ],
     };
   },
-  chat(): TextOut {
+  chat(text = ""): ChatOut {
+    const goal = goalFromText(text);
+    if (goal) return { text: `Stark, das nehme ich auf: „${goal.title}“ steht jetzt in deinem Lernpfad.`, goal };
     return {
       text: "Im Skript-Modus kann ich das nicht frei beantworten. Probier: „Ich muss morgen bei der Fallbesprechung vorstellen“.",
     };

@@ -11,10 +11,10 @@ import { Icon } from "./ui";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
-import { fallback, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
-import { BADGES, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
+import { fallback, type ChatOut, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
+import { addToPath, BADGES, demoPath as demoGoalPath, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
-import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
+import type { AppState, Experience, GoalPathState, PathChallenge, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string };
 type Tab = "coach" | "ziele" | "team";
@@ -365,7 +365,18 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       s.goalSetAt = now().toISOString();
     });
     setObStep(OB_TOTAL + 2);
-    const w = await ai("welcome", {}, fallback.welcome(profile));
+    // Lernpfad und Fokus parallel erzeugen; ohne KI gibt es den Demo-Pfad passend zum Ziel.
+    // Wer genau die Demo-Antworten gewählt hat (Max Müller), bekommt verlässlich den kuratierten Demo-Pfad.
+    const demo = demoGoalPath(profile.card?.goal || profile.goal);
+    const [w, gp] = await Promise.all([
+      ai("welcome", {}, fallback.welcome(profile)),
+      demoPath ? Promise.resolve(demo) : ai<GoalPathState>("path", {}, demo, true),
+    ]);
+    const own = gp?.challenges?.length ? gp : demo;
+    update((s) => {
+      s.goalPath = own;
+      s.pathDone = own.source === "ai" ? [] : undefined;
+    });
     update((s) => {
       s.summary = w.summary;
       s.focus = w.focus.filter((id) => findSkill(s.areas, id)).slice(0, 3);
@@ -598,8 +609,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       .filter((m) => m.kind === "text" && m.text)
       .slice(-8)
       .map((m) => ({ from: m.from, text: m.text }));
-    const out = await ai("chat", { text, history }, fallback.chat());
+    const out = await ai<ChatOut>("chat", { text, history }, fallback.chat(text));
     await say(out.text, 100);
+    if (out.goal?.title) addChatGoal(out.goal);
   }
 
   /** Demo: Pflichtschulung absolvieren (öffnet sonst das Lernportal bzw. die Terminbuchung). */
@@ -612,6 +624,21 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     });
     addXP(30, { kind: "Lernen", title: `Pflichtschulung „${m.title}“ (${m.id}) absolviert` });
     toast(`${m.title} erledigt, +30 XP`);
+  }
+
+  /** Ziel aus dem Chat als Challenge in den Lernpfad übernehmen. */
+  function addChatGoal(g: PathChallenge) {
+    const st = sRef.current;
+    const path = goalPath(st, new Date(Date.now() + st.timeOffsetMs));
+    if (!path) return;
+    const base = st.goalPath ?? demoGoalPath(st.profile?.card?.goal || st.profile?.goal);
+    const next = addToPath(base, { ...g, fromChat: true }, path.done);
+    if (next === base) return;
+    update((s) => {
+      s.goalPath = next;
+      if (!s.pathDone) s.pathDone = path.done;
+    });
+    push({ from: "bot", kind: "link", data: { icon: "target", sub: "Neu im Lernpfad", title: g.title, to: "pfad" } });
   }
 
   /** Lernpfad: aktuelle Challenge abhaken. */
@@ -841,7 +868,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       case "link":
         return (
           <div className="blk">
-            <LinkCard icon={d.icon} sub={d.sub} title={d.title} onOpen={() => (d.to === "team" ? setTab("team") : openReise("update"))} />
+            <LinkCard icon={d.icon} sub={d.sub} title={d.title} onOpen={() => (d.to === "team" ? setTab("team") : openReise(d.to === "pfad" ? "pfad" : "update"))} />
           </div>
         );
       case "profile":

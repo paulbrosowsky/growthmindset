@@ -69,16 +69,18 @@ export function goalPath(state: AppState, now: Date): GoalPath | null {
   const raw = p?.card?.goal || p?.goal;
   if (!raw) return null;
   const key = goalPathKey(raw);
-  const set = GOAL_PATHS[key];
-  const done = state.pathDone ?? PATH_DONE_DEFAULT(key);
+  // Persönlicher Pfad aus Onboarding und Chat; ältere Profile ohne Pfad bekommen den Demo-Pfad zum Ziel.
+  const own = state.goalPath;
+  const challenges = own?.challenges?.length ? own.challenges : GOAL_PATHS[key].challenges;
+  const done = state.pathDone ?? (own?.source === "ai" ? [] : PATH_DONE_DEFAULT(key));
   const start = new Date(state.goalSetAt || state.createdAt);
   const week = Math.min(4, Math.max(1, Math.floor((dayStart(now) - dayStart(start)) / (7 * DAY)) + 1));
   return {
-    title: (key !== "praes" ? set.title : "") || goalText(raw),
+    title: (own ? own.title : key !== "praes" ? GOAL_PATHS[key].title : "") || goalText(raw),
     week,
-    challenges: set.challenges,
+    challenges,
     done,
-    cur: set.challenges.findIndex((c) => !done.includes(c.id)),
+    cur: challenges.findIndex((c) => !done.includes(c.id)),
   };
 }
 
@@ -512,8 +514,13 @@ export function PathView({ state, now, onBack, onPrepare, onDone }: { state: App
               <div>
                 <b className="sh-t">{c.title}</b>
                 <span className="mut" style={{ display: "block", marginTop: 4 }}>
-                  {cState(sel) === 0 ? "Kommt später auf deinem Weg." : cState(sel) === 1 ? "Erledigt. Stark, dass du drangeblieben bist." : c.text}
+                  {cState(sel) === 0 ? (c.fromChat ? c.text : "Kommt später auf deinem Weg.") : cState(sel) === 1 ? "Erledigt. Stark, dass du drangeblieben bist." : c.text}
                 </span>
+                {c.fromChat && (
+                  <small className="xs" style={{ display: "block", marginTop: 6, fontWeight: 700 }}>
+                    Dein Ziel aus dem Chat
+                  </small>
+                )}
                 {c.refs?.length ? (
                   <small className="mut xs" style={{ display: "block", marginTop: 6 }}>
                     Grundlage: {c.refs.map(saaLabel).join(" · ")}
