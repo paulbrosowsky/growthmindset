@@ -26,7 +26,7 @@ const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
 // `q` ist die Rückfall-Formulierung; live formuliert Kompass jede Frage passend zur vorigen Antwort.
 const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; topic: string; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
   // Wer?
-  { key: "role", topic: "aktuelle Rolle und Bereich", q: "Welche Rolle hast du aktuell?", chips: ["Produktmanagerin, Wärmepumpen-App"], ph: "Rolle und Bereich" },
+  { key: "role", topic: "aktuelle Rolle und Bereich", q: "Welche Rolle hast du aktuell?", chips: ["Produktmanagerin, Wärmepumpen-App", "Entwickler im Steuerungsteam", "UX-Designerin, Kunden-App", "Teamleiter im Service"], ph: "Rolle und Bereich" },
   { key: "experience", topic: "bisherige berufliche Stationen, Weg in die Rolle", q: "Wie bist du dahin gekommen, welche Stationen hattest du bisher?", chips: ["3 Jahre Agentur, seit 8 Monaten hier"] },
   { key: "likes", topic: "was im Berufsalltag Spaß macht und was die Person meidet", q: "Was macht dir im Alltag Spaß, und was meidest du eher?", chips: ["Datenanalysen mag ich, große Präsentationen meide ich."] },
   // Was?
@@ -305,7 +305,8 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       await say(lead ? `${lead} ${asked}` : asked, lead ? 300 : 650);
       const chips = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
       let answer = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
-      if (!q.multi && !q.chips.includes(answer)) demoPath = false;
+      // Nur der erste Chip gehört zum Demo-Pfad (Produktmanagerin mit Präsentation).
+      if (!q.multi && answer !== q.chips[0]) demoPath = false;
       const base = { step: i + 1, nextTopic: next?.topic, nextQuestion: next?.q, nextIsChoice: Boolean(next?.multi), name, answersSoFar: answers };
       let r = await ai("onboard", { ...base, question: asked, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
       if (r.followUp && left > 0) {
