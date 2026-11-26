@@ -62,7 +62,7 @@ export async function deleteState(username: string): Promise<void> {
 export type SharedEntry = { username: string; name: string; role: string; items: NonNullable<AppState["shared"]> };
 
 /** Alle selbst geteilten Erfolge (für die Unternehmenssicht). Nur Name, Rolle und die freigegebenen Einträge, nichts aus dem Coach. */
-/** „max.mueller“ → „Max Mueller“ */
+/** „lena.berger“ → „Lena Berger“ */
 const prettyName = (u: string) =>
   u
     .split(/[._-]+/)

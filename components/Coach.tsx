@@ -28,7 +28,7 @@ const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation|fallbes
 const OB_TOTAL = OB_QUESTIONS.length;
 const MAX_FOLLOWUPS = 2;
 const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-const TOPIC_FULL = "Fallvorstellung Polytrauma, Fallbesprechung der Wache, 15 Minuten";
+const TOPIC_FULL = "Fallvorstellung Schlaganfall, Fallbesprechung der Wache, 15 Minuten";
 const PRESENT_CHIP = "Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen.";
 const CHIPS = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const CHIP = { hidden: { opacity: 0, y: 8, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 420, damping: 28 } } };
@@ -326,8 +326,8 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       await say(lead ? `${lead} ${asked}` : asked, lead ? 300 : 650);
       const chips: string[] = q.multi ? q.chips : suggested.length ? suggested.slice(0, 2) : demoPath ? q.chips : [];
       let answer: string = q.multi ? await askMulti(chips) : await ask(chips, q.ph || "Deine Antwort …");
-      // Rolle ohne Vorschläge; Demo-Pfad (Notfallsanitäter Max Müller mit Fallvorstellung) nur über den ersten Chip.
-      if (q.key === "role") demoPath = /notfallsan|notsan/i.test(answer) && !/azubi|auszubild/i.test(answer);
+      // Rolle ohne Vorschläge; Demo-Pfad (FSJlerin Lena Berger mit Fallvorstellung) nur über den ersten Chip.
+      if (q.key === "role") demoPath = /fsj|freiwillig/i.test(answer);
       else if (!q.multi && answer !== q.chips[0]) demoPath = false;
       const base = { step: i + 1, nextTopic: next?.topic, nextQuestion: next?.q, nextIsChoice: Boolean(next?.multi), name, answersSoFar: answers };
       let r = await ai("onboard", { ...base, question: asked, answer, followUpsLeft: left, history: history() }, fallback.onboard(i + 1, answer, left, false));
@@ -404,7 +404,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     });
     setObStep(OB_TOTAL + 2);
     // Lernpfad und Fokus parallel erzeugen; ohne KI gibt es den Demo-Pfad passend zum Ziel.
-    // Wer genau die Demo-Antworten gewählt hat (Max Müller), bekommt verlässlich den kuratierten Demo-Pfad.
+    // Wer genau die Demo-Antworten gewählt hat (Lena Berger), bekommt verlässlich den kuratierten Demo-Pfad.
     const demo = demoGoalPath(profile.card?.goal || profile.goal);
     const [w, gp] = await Promise.all([
       ai("welcome", {}, fallback.welcome(profile)),
@@ -519,7 +519,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
 
   async function presentFlow(text: string) {
     const pct = praesPct();
-    let topic = /fallbesprech|fallvorstell|einsatz|polytrauma/i.test(text) ? TOPIC_FULL : "";
+    let topic = /fallbesprech|fallvorstell|einsatz|schlaganfall|polytrauma/i.test(text) ? TOPIC_FULL : "";
     if (!topic) {
       await say(`Gut, dass du dich meldest! Worum geht es?`);
       topic = await ask([TOPIC_FULL], "Thema und Publikum");
@@ -1367,7 +1367,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                   initial={{ opacity: 0, y: 14, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: [0.9, 1.06, 1] }}
                   exit={{ opacity: 0, y: 8, transition: { duration: 0.18 } }}
-                  transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 26, scale: { type: "tween", duration: 0.35, ease: "easeOut" } }}
                 >
                   {t.text}
                 </motion.div>

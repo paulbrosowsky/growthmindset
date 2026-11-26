@@ -97,7 +97,7 @@ function useLiveShared() {
       const r = await fetch("/api/shared", { cache: "no-store" });
       const { entries } = (await r.json()) as { entries: SharedEntry[] };
       const all = entries.flatMap((e) => {
-        // Demo: Personen aus dem Team (z. B. „Max“ oder max.mueller) mit vollem Namen und Jobprofil zeigen.
+        // Demo: Personen aus dem Team (z. B. „Lena“ oder lena.berger) mit vollem Namen und Jobprofil zeigen.
         const row = TEAM_ROWS.find((r) => firstName(r.name) === firstName(e.name) || firstName(r.name) === firstName(e.username));
         return e.items.map((it) => ({ ...it, name: row?.name ?? e.name, role: row?.role ?? e.role, username: e.username }));
       });
@@ -199,7 +199,7 @@ export default function Dashboard({ initialView }: { initialView: View }) {
         <div className="flex flex-col gap-2 md:mt-auto">
           <Button variant="secondary" asChild className="h-10 justify-start rounded-xl px-3 text-[13px] font-semibold">
             <a href="/">
-              <ArrowLeft /> Zur App von Max
+              <ArrowLeft /> Zur App von Lena
             </a>
           </Button>
           <button className="flex min-h-12 items-center gap-2.5 rounded-xl p-2 text-left hover:bg-muted">

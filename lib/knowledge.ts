@@ -299,7 +299,7 @@ export const BADGES: Record<string, { name: string; text: string }> = {
   mutig: { name: "Mutig", text: "Eine Aufgabe außerhalb der Komfortzone angepackt" },
 };
 
-/** Jobprofil zur frei eingegebenen Rolle; ohne Treffer Notfallsanitäter/in (Demo-Persona Max Müller). */
+/** Jobprofil zur frei eingegebenen Rolle; ohne Treffer Notfallsanitäter/in. */
 export function roleFor(role?: string): RoleProfile {
   const r = (role || "").toLowerCase();
   return COMPANY.roles.find((x) => new RegExp(x.match, "i").test(r)) ?? COMPANY.roles.find((x) => x.id === "notsan")!;
@@ -318,13 +318,13 @@ export const skillLevel = (sk: Skill) => Math.round(skillProgress(sk) / (100 / M
 /** Jährliche Pflichtschulungen P01 bis P05. Fälligkeit in Tagen ab Start der Demo (negativ = abgelaufen). */
 export const MANDATORY: { id: string; title: string; meta: string; dueDays: number; desc: string; duration: string; last: string; format: string }[] = [
   { id: "P01", title: "Reanimationskurs", meta: "jährlich · 4 Stunden", dueDays: 74, duration: "4 Std.", last: "Feb. 2026", format: "Präsenz", desc: "Reanimation, CPR und AED nach aktuellen Leitlinien. Nächster Termin im Februar, Nachholtermin im September." },
-  { id: "P02", title: "Hygieneschulung", meta: "jährlich · 2 Stunden", dueDays: 110, duration: "2 Std.", last: "März 2026", format: "Präsenz", desc: "Infektionsprävention, Händehygiene und Schutzkleidung im Einsatz und auf der Wache." },
+  { id: "P02", title: "Hygieneschulung", meta: "jährlich · 2 Stunden", dueDays: 9, duration: "2 Std.", last: "März 2026", format: "Präsenz", desc: "Infektionsprävention, Händehygiene und Schutzkleidung im Einsatz und auf der Wache." },
   { id: "P03", title: "Fahrsicherheitstraining", meta: "jährlich · 1 Tag", dueDays: -21, duration: "1 Tag", last: "Juni 2025", format: "Präsenz", desc: "Sicheres Fahren, Einsatzfahrten mit Sonderrechten und Gefahrensituationen. Dein letzter Nachweis ist abgelaufen, buch dir am besten gleich einen Termin." },
   { id: "P04", title: "Datenschutz", meta: "jährlich · 2 Stunden", dueDays: 42, duration: "2 Std.", last: "Jan. 2026", format: "E-Learning", desc: "DSGVO, Umgang mit Patientendaten und Schweigepflicht. Mit kurzem Abschlusstest." },
   { id: "P05", title: "Brandschutz", meta: "jährlich · 2 Stunden", dueDays: 135, duration: "2 Std.", last: "Apr. 2026", format: "Präsenz", desc: "Brandverhütung, Verhalten im Brandfall und Umgang mit dem Feuerlöscher." },
 ];
-/** Gültige Nachweise der Demo-Persona: alles außer dem Fahrsicherheitstraining. */
-export const MANDATORY_DONE_DEFAULT = ["P01", "P02", "P04", "P05"];
+/** Gültige Nachweise der Demo-Persona Lena: Hygiene (P02) ist noch offen, Frist in 9 Tagen. */
+export const MANDATORY_DONE_DEFAULT = ["P01", "P03", "P04", "P05"];
 
 /** Pflichtschulungen, die dem Jobprofil zugeordnet sind. */
 export const mandatoryFor = (role?: string) => {
@@ -354,9 +354,9 @@ export const GOAL_PATHS: Record<PathKey, { title: string; challenges: Challenge[
       ch("p3", "meth", "Einsatzprotokoll als Quelle", "Lernen", 15, "Zeitstrahl und Befunde aus der Doku, vollständig anonymisiert."),
       ch("p4", "komm", "Generalprobe mit Video", "Üben", 15, "Nimm dich auf und lass LENA Feedback geben."),
       ch("p5", "komm", "Souverän mit Rückfragen", "Lernen", 20, "Zuhören, wiederholen, kurz antworten."),
-      ch("p6", "fach", "Bezug zum BPR Polytrauma", "Anwenden", 20, "Zeig, wo ihr nach dem Behandlungspfad vorgegangen seid und wo bewusst nicht.", ["Polytrauma"]),
+      ch("p6", "fach", "Bezug zum BPR Schlaganfall", "Anwenden", 20, "Zeig, wo ihr nach dem Behandlungspfad vorgegangen seid, vom FAST-Test bis zur Übergabe.", ["Schlaganfall"]),
       ch("p7", "komm", "Stimme und Pausen", "Üben", 10, "Pausen wirken sicherer als schnelle Sätze."),
-      ch("p8", "meth", "Fall in der Fallbesprechung vorstellen", "Anwenden", 30, "Der echte Termin (F12). Du bist vorbereitet."),
+      ch("p8", "meth", "Fall in der Fallbesprechung vorstellen", "Anwenden", 30, "Der echte Termin in der Wachenrunde. Du bist vorbereitet."),
       ch("p9", "komm", "Feedback einholen", "Anwenden", 15, "Frag zwei Kolleg/innen, was hängen blieb."),
       ch("p10", "selbst", "Reflexion danach", "Reflexion", 10, "Was nimmst du für die nächste Fallvorstellung mit?"),
     ],
@@ -477,16 +477,16 @@ export const PATH_DONE_DEFAULT = (key: PathKey) => GOAL_PATHS[key].challenges.sl
 
 /** Weitere (zugeklappte) Ziele der Demo-Persona, abgeleitet aus der Kompetenzbewertung. */
 export const OTHER_GOALS: { id: string; title: string; status: "pausiert" | "erreicht"; meta: string; done: number; total: number; color: string; text: string }[] = [
-  { id: "belastbarkeit", title: "Belastbarkeit stärken", status: "pausiert", meta: "pausiert · 2 von 10", done: 2, total: 10, color: "#E3907D", text: "Belastbarkeit Ist 2, Soll 3. Pausiert, solange du an deinem aktuellen Ziel arbeitest. Passend: F06 Stressbewältigung und Resilienz." },
-  { id: "doku", title: "Digitale Einsatzdokumentation", status: "erreicht", meta: "erreicht · September", done: 8, total: 8, color: "#7C9CD6", text: "Dokumentation steht auf Stufe 3, eine über dem Soll. Stark." },
+  { id: "belastbarkeit", title: "Belastende Einsätze verarbeiten", status: "pausiert", meta: "pausiert · 2 von 10", done: 2, total: 10, color: "#E3907D", text: "Pausiert, solange du an deinem aktuellen Ziel arbeitest. Passend: F06 Stressbewältigung und Resilienz, und sprich gern mit Jonas als Praxisanleiter." },
+  { id: "rtwcheck", title: "RTW-Check allein durchführen", status: "erreicht", meta: "erreicht · Oktober", done: 8, total: 8, color: "#7C9CD6", text: "Fahrzeugcheck RTW steht auf Stufe 3, über dem Soll für dein FSJ. Stark." },
 ];
 
 /* ---------- Stellenprofil: Jahresziele und SOPs ---------- */
 
 export const YEAR_GOALS: { id: string; title: string; meta: string; color: string }[] = [
-  { id: "trauma", title: "Patientenversorgung auf Stufe 4: Traumamanagement Advanced (F02)", meta: "bis Juni · mit Thomas Weber vereinbart", color: "#7FB5A3" },
-  { id: "p03", title: "Fahrsicherheitstraining (P03) nachholen", meta: "abgelaufen · Termin im Januar", color: "#E3907D" },
-  { id: "praxisanleitung", title: "Erste Schritte Richtung Praxisanleitung", meta: "Perspektive aus dem Gespräch", color: "#B58BC9" },
+  { id: "rs", title: "Gut vorbereitet in die Ausbildung zur Rettungssanitäterin", meta: "Start im Herbst · mit Thomas Weber vereinbart", color: "#7FB5A3" },
+  { id: "f11", title: "F11 Berufliche Orientierung im Rettungsdienst", meta: "Seminar im Januar · angemeldet", color: "#7C9CD6" },
+  { id: "p02", title: "Hygieneschulung (P02) abschließen", meta: "offen · Frist in 9 Tagen", color: "#E3907D" },
 ];
 
 export const SOPS: { id: string; title: string; version: string; changed: string; summary: string; readDefault?: boolean }[] = [
@@ -510,9 +510,9 @@ const s = (id: string, name: string, subs: [string, string, number][], recs: Rec
 });
 
 /**
- * Kompetenzen der Demo-Persona Max Müller (Notfallsanitäter, 5 Jahre im Kreisverband).
+ * Kompetenzen der Demo-Persona Lena Berger (19, FSJ auf der Rettungswache Nord, startet im Herbst die RS-Ausbildung).
  * Stufen 1 bis 4 wie im Kompetenzmodell; die Skill-Stufen entsprechen der Kompetenzbewertung:
- * Fachwissen 4, Patientenversorgung 3, Kommunikation 3, Belastbarkeit 2, Dokumentation 3, Teamfähigkeit 3.
+ * Fachwissen 1, Kommunikation 1 (Soll 2), Teamfähigkeit 2, Lernbereitschaft 3, Organisation 2, Verantwortung 2.
  */
 export function initialAreas(): Area[] {
   return [
@@ -525,9 +525,9 @@ export function initialAreas(): Area[] {
           "notfall",
           "Notfallmedizinisches Fachwissen",
           [
-            ["leitlinien", "Aktuelle Leitlinien", 4],
-            ["pharma", "Medikamente und Dosierungen", 4],
-            ["krankheit", "Krankheitsbilder erkennen", 3],
+            ["leitlinien", "Aktuelle Leitlinien", 1],
+            ["pharma", "Medikamente und Dosierungen", 1],
+            ["krankheit", "Krankheitsbilder erkennen", 2],
           ],
           [r("n1", "Intern", "F12 Notfallmedizinische Fallbesprechungen", "1 Tag"), r("n2", "Ressource", "SAA und BPR 2025 der ÄLRD", "Nachschlagen")],
         ),
@@ -535,10 +535,10 @@ export function initialAreas(): Area[] {
           "patient",
           "Patientenversorgung",
           [
-            ["abcde", "Untersuchung nach ABCDE", 4],
-            ["trauma", "Traumaversorgung", 2],
-            ["kinder", "Kindernotfälle", 3],
-            ["invasiv", "Invasive Maßnahmen", 3],
+            ["abcde", "Untersuchung nach ABCDE", 2],
+            ["trauma", "Traumaversorgung", 1],
+            ["kinder", "Kindernotfälle", 1],
+            ["invasiv", "Invasive Maßnahmen", 1],
           ],
           [
             r("pv1", "Intern", "F02 Traumamanagement Advanced", "2 Tage"),
@@ -550,9 +550,9 @@ export function initialAreas(): Area[] {
           "material",
           "Fahrzeug- und Materialkunde",
           [
-            ["mpg", "Medizinprodukte", 3],
+            ["mpg", "Medizinprodukte", 2],
             ["rtwcheck", "Fahrzeugcheck RTW", 3],
-            ["fahren", "Sicher im Einsatz fahren", 2],
+            ["fahren", "Sicher im Einsatz fahren", 1],
           ],
           [r("ma1", "Intern", "P03 Fahrsicherheitstraining", "1 Tag")],
         ),
@@ -567,9 +567,9 @@ export function initialAreas(): Area[] {
           "doku",
           "Dokumentation",
           [
-            ["protokoll", "Einsatzprotokoll", 3],
-            ["digital", "Digitale Dokumentation", 3],
-            ["dsgvo", "Datenschutz bei Patientendaten", 3],
+            ["protokoll", "Einsatzprotokoll", 2],
+            ["digital", "Digitale Dokumentation", 2],
+            ["dsgvo", "Datenschutz bei Patientendaten", 2],
           ],
           [r("d1", "Intern", "F14 Qualitätsmanagement im Rettungsdienst", "1 Tag")],
         ),
@@ -577,9 +577,9 @@ export function initialAreas(): Area[] {
           "entscheid",
           "Entscheidungsfähigkeit",
           [
-            ["lage", "Lage schnell einschätzen", 3],
-            ["prio", "Prioritäten im Einsatz", 3],
-            ["ziel", "Transportziel und Nachforderung", 2],
+            ["lage", "Lage schnell einschätzen", 1],
+            ["prio", "Prioritäten im Einsatz", 1],
+            ["ziel", "Transportziel und Nachforderung", 1],
           ],
           [r("e1", "Üben", "Fallbeispiel mit LENA durchspielen", "20 min")],
         ),
@@ -604,11 +604,11 @@ export function initialAreas(): Area[] {
           "praes",
           "Kommunikation",
           [
-            ["struktur", "Fall strukturiert vorstellen", 3],
+            ["struktur", "Fall strukturiert vorstellen", 1],
             ["folien", "Folien und Visualisierung", 2],
-            ["story", "Anschaulich erzählen", 3],
-            ["koerper", "Auftreten und Stimme", 3],
-            ["fragen", "Umgang mit Rückfragen", 2],
+            ["story", "Anschaulich erzählen", 2],
+            ["koerper", "Auftreten und Stimme", 1],
+            ["fragen", "Umgang mit Rückfragen", 1],
           ],
           [
             r("p4", "Üben", "Generalprobe mit Video", "10 min"),
@@ -621,8 +621,8 @@ export function initialAreas(): Area[] {
           "team",
           "Teamfähigkeit",
           [
-            ["crm", "Crew Resource Management", 3],
-            ["absprache", "Klare Absprachen im Einsatz", 3],
+            ["crm", "Crew Resource Management", 1],
+            ["absprache", "Klare Absprachen im Einsatz", 2],
             ["unterst", "Kolleg/innen unterstützen", 3],
           ],
           [r("tm1", "Ressource", "Leitfaden Debriefing nach dem Einsatz", "10 min")],
@@ -631,9 +631,9 @@ export function initialAreas(): Area[] {
           "konflikt",
           "Konfliktmanagement",
           [
-            ["deeskal", "Deeskalation im Einsatz", 2],
+            ["deeskal", "Deeskalation im Einsatz", 1],
             ["konfteam", "Konflikte im Team ansprechen", 1],
-            ["kfb", "Kritik sachlich äußern", 2],
+            ["kfb", "Kritik sachlich äußern", 1],
           ],
           [r("k1", "Intern", "F05 Konfliktmanagement", "1 Tag")],
         ),
@@ -660,7 +660,7 @@ export function initialAreas(): Area[] {
           [
             ["sorgfalt", "Sorgfalt und Hygiene", 3],
             ["nachweise", "Pflichtschulungen im Blick", 2],
-            ["eigenschutz", "Eigenschutz", 4],
+            ["eigenschutz", "Eigenschutz", 3],
           ],
           [r("v1", "Ressource", "Hygieneplan Rettungswache, Version 4.1", "10 min")],
         ),
@@ -668,7 +668,7 @@ export function initialAreas(): Area[] {
           "lernen",
           "Lernbereitschaft",
           [
-            ["ziele", "Lernziele setzen", 2],
+            ["ziele", "Lernziele setzen", 3],
             ["reflex", "Einsätze reflektieren", 3],
             ["routine", "Lernroutine", 2],
           ],
@@ -686,7 +686,7 @@ export function initialAreas(): Area[] {
           "Pädagogische Kompetenz",
           [
             ["anleiten", "Praxisanleitung planen", 1],
-            ["zeigen", "Maßnahmen erklären und zeigen", 2],
+            ["zeigen", "Maßnahmen erklären und zeigen", 1],
             ["bewerten", "Lernfortschritt einschätzen", 1],
           ],
           [r("pd1", "Intern", "F03 Pädagogik für Praxisanleiter", "2 Tage")],
@@ -695,7 +695,7 @@ export function initialAreas(): Area[] {
           "fbk",
           "Feedbackkompetenz",
           [
-            ["sbi", "Konkret nach SBI", 2],
+            ["sbi", "Konkret nach SBI", 1],
             ["annehmen", "Feedback annehmen", 3],
             ["gespraech", "Feedbackgespräche führen", 1],
           ],
@@ -705,8 +705,8 @@ export function initialAreas(): Area[] {
           "fuehrung",
           "Führung im Einsatz",
           [
-            ["anweisen", "Einsatzteam anleiten", 2],
-            ["vertreten", "Entscheidungen vertreten", 2],
+            ["anweisen", "Einsatzteam anleiten", 1],
+            ["vertreten", "Entscheidungen vertreten", 1],
             ["entwickeln", "Andere entwickeln", 1],
           ],
           [r("fu1", "Intern", "F15 Ausbildung und Anleitung von Nachwuchskräften", "1 Tag")],
@@ -743,7 +743,7 @@ export function initialState(username: string): AppState {
     profile: null,
     focus: [],
     areas: initialAreas(),
-    xp: 1240,
+    xp: 380,
     badges: [],
     mandatoryDone: [...MANDATORY_DONE_DEFAULT],
     sopRead: SOPS.filter((x) => x.readDefault).map((x) => x.id),
@@ -751,7 +751,7 @@ export function initialState(username: string): AppState {
       {
         id: "seed1",
         date: new Date(now - 14 * day).toISOString(),
-        title: "Polytrauma-Einsatz mit der Crew nachbesprochen",
+        title: "Schlaganfall-Einsatz mit der Crew nachbesprochen",
         detail: "Teilkompetenz Einsätze reflektieren bestätigt",
         kind: "Reflexion",
         xp: 60,
@@ -759,15 +759,15 @@ export function initialState(username: string): AppState {
       {
         id: "seed2",
         date: new Date(now - 21 * day).toISOString(),
-        title: "Azubi Lisa beim Zugang legen angeleitet",
-        detail: "Teilkompetenz Maßnahmen erklären und zeigen",
+        title: "RTW-Check zum ersten Mal allein gemacht",
+        detail: "Teilkompetenz Fahrzeugcheck RTW bestätigt",
         kind: "Anwenden",
         xp: 60,
       },
       {
         id: "seed3",
         date: new Date(now - 28 * day).toISOString(),
-        title: "S3-Leitlinie Polytrauma quergelesen",
+        title: "BPR Schlaganfall quergelesen",
         kind: "Lernen",
         xp: 15,
       },
