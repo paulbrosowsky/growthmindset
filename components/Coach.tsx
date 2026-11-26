@@ -11,9 +11,11 @@ import { Icon } from "./ui";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
-import { fallback, type ChatOut, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
+import { fallback, type ChatOut, type ProfileOut, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
 import { addToPath, BADGES, demoPath as demoGoalPath, goalPathKey, profilePath, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
+import { OB_QUESTIONS } from "@/lib/onboarding";
+import { VoiceSession, type VoiceStatus } from "@/lib/voiceClient";
 import type { AppState, Experience, GoalPathState, PathChallenge, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string };
@@ -21,22 +23,6 @@ type Tab = "coach" | "ziele" | "team";
 type Reise = { view: "home" | "kompetenzen" | "area" | "update" | "pfad" | "profil"; area: string; skill: string; from?: "home" | "kompetenzen" | "profil" };
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation|fallbesprechung|fallvorstellung|fall vorstellen|einsatz vorstellen/i;
-// Reihenfolge als Gesprächsbogen: heute (Rolle, Weg, Spaß/Meiden) → Zukunft (3 Jahre) →
-// was dafür zu lernen ist → erster Meilenstein in 4 Wochen → wie und wann gelernt wird.
-// `q` ist die Rückfall-Formulierung; live formuliert Kompass jede Frage passend zur vorigen Antwort.
-const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" | "goal" | "preference" | "time"; topic: string; q: string; chips: string[]; ph?: string; multi?: boolean }[] = [
-  // Wer?
-  { key: "role", topic: "aktuelle Rolle und Bereich", q: "Welche Rolle hast du aktuell?", chips: [], ph: "Deine Rolle und dein Bereich" },
-  { key: "experience", topic: "bisherige berufliche Stationen, Weg in die Rolle", q: "Wie bist du dahin gekommen, welche Stationen hattest du bisher?", chips: ["Erst Rettungssanitäter, seit 5 Jahren Notfallsanitäter hier"] },
-  { key: "likes", topic: "was im Berufsalltag Spaß macht und was die Person meidet", q: "Was macht dir im Alltag Spaß, und was meidest du eher?", chips: ["Akuteinsätze mag ich, Fallvorstellungen vor der Runde meide ich."] },
-  // Was?
-  { key: "vision", topic: "wo die Person sich in 3 Jahren sieht", q: "Lass uns nach vorn schauen: Wo siehst du dich in 3 Jahren?", chips: ["Als Praxisanleiter Azubis begleiten"] },
-  { key: "learn", topic: "was die Person dafür lernen möchte", q: "Was möchtest du dafür lernen?", chips: ["Wissen verständlich weitergeben und sicher vorstellen"] },
-  { key: "goal", topic: "was davon sie in den nächsten 4 Wochen erreichen will", q: "Und was davon willst du in den nächsten 4 Wochen schaffen?", chips: ["Meinen Trauma-Einsatz in der Fallbesprechung vorstellen"] },
-  // Wie?
-  { key: "preference", topic: "wie die Person am besten lernt (Auswahl folgt)", q: "Wie lernst du am besten?", chips: ["Praxis und Üben", "Videos", "Lesen", "Austausch"], multi: true },
-  { key: "time", topic: "wann und wo Lernen in den Alltag passt", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["In ruhigen Phasen auf der Wache", "Nach dem Schichtwechsel"] },
-];
 const OB_TOTAL = OB_QUESTIONS.length;
 const MAX_FOLLOWUPS = 2;
 const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
@@ -44,6 +30,17 @@ const TOPIC_FULL = "Fallvorstellung Polytrauma, Fallbesprechung der Wache, 15 Mi
 const PRESENT_CHIP = "Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen.";
 const CHIPS = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const CHIP = { hidden: { opacity: 0, y: 8, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 420, damping: 28 } } };
+
+const VOICE_LABEL: Record<VoiceStatus, string> = {
+  connecting: "Verbinde Sprachgespräch …",
+  listening: "Ich höre zu, sprich einfach",
+  hearing: "Ich höre zu …",
+  thinking: "Kompass überlegt …",
+  speaking: "Kompass spricht …",
+};
+
+/** Das Sprachgespräch übernimmt einen laufenden Text-Ablauf (z. B. mitten im Kennenlernen). */
+class VoiceTakeover extends Error {}
 
 export default function Coach({ initial, live, onLogout, onRestart }: { initial: AppState; live: boolean; onLogout: () => void; onRestart: (fresh: AppState) => void }) {
   const [S, setS] = useState<AppState>(initial);
@@ -67,8 +64,15 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   const scriptRef = useRef(false);
   const [, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Sprachgespräch (OpenAI Realtime): startet über den Senden-Knopf bei leerem Eingabefeld.
+  const [voice, setVoice] = useState<{ mode: "onboarding" | "chat"; status: VoiceStatus } | null>(null);
+  const voiceRef = useRef<VoiceSession | null>(null);
+  const voiceAvail = useRef<boolean | null>(null);
+  const takeover = useRef(false);
+  const obRef = useRef<{ name: string; answers: Partial<Profile>; card?: ProfileOut }>({ name: "", answers: {} });
 
   const pending = useRef<((v: string) => void) | null>(null);
+  const pendingAbort = useRef<((e: Error) => void) | null>(null);
   const cardWaiters = useRef<Record<string, (v: unknown) => void>>({});
   const rehRecorded = useRef<((v: VideoResult | null) => void) | null>(null);
   const rehBack = useRef<(() => void) | null>(null);
@@ -149,25 +153,30 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     setTyping(true);
     await sleep(wait);
     setTyping(false);
+    if (takeover.current) throw new VoiceTakeover();
     push({ from: "bot", kind: "text", text });
   };
 
   const note = (text: string) => push({ from: "bot", kind: "note", text });
 
   const ask = (c: string[], ph?: string) => {
+    if (takeover.current) throw new VoiceTakeover();
     setChips(c);
     setPlaceholder(ph || "Oder schreib frei …");
-    return new Promise<string>((res) => {
+    return new Promise<string>((res, rej) => {
       pending.current = res;
+      pendingAbort.current = rej;
     });
   };
 
   const askMulti = (options: string[]) => {
+    if (takeover.current) throw new VoiceTakeover();
     setChips([]);
     setMulti({ options, selected: [] });
     setPlaceholder("Oder schreib frei …");
-    return new Promise<string>((res) => {
+    return new Promise<string>((res, rej) => {
       pending.current = res;
+      pendingAbort.current = rej;
     });
   };
 
@@ -250,6 +259,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     setBusy(true);
     try {
       await fn();
+    } catch (err) {
+      // Das Sprachgespräch hat den laufenden Text-Ablauf übernommen.
+      if (!(err instanceof VoiceTakeover)) throw err;
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -268,15 +280,19 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   }
 
   async function onboarding() {
+    // Nach einem beendeten Sprachgespräch geht es schriftlich dort weiter, wo es aufgehört hat.
+    const resume = obRef.current.name && Object.keys(obRef.current.answers).length > 1 ? obRef.current : null;
     update((s) => {
       s.phase = "onboarding";
-      s.messages = [];
+      if (!resume) s.messages = [];
     });
     setObStep(1);
     // Der Name kommt aus dem Login (z. B. „lena.berger“ → „Lena“).
     const guess = sRef.current.username.split(/[._\-\s@0-9]/)[0];
-    let name = guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase();
-    if (name.length < 2) {
+    let name = resume?.name || guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase();
+    if (resume) {
+      // kein erneutes Hallo
+    } else if (name.length < 2) {
       await say(`Hallo, ich bin **Kompass**, dein Lern-Coach bei ${COMPANY.short}. Wie heißt du?`, 400);
       name = (await ask([], "Dein Vorname")).split(/[ ,]/)[0] || "du";
       await say("Schön, dich kennenzulernen. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.");
@@ -284,21 +300,23 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       await say(`Hallo ${name}, ich bin **Kompass**, dein Lern-Coach. Lass uns gemeinsam dein Lernziel finden, was du mir erzählst, bleibt bei dir.`, 400);
     }
 
-    const answers: Partial<Profile> = { name };
+    const answers: Partial<Profile> = resume?.answers || { name };
+    obRef.current = { name, answers };
     const history = () =>
       sRef.current.messages
         .filter((m) => m.kind === "text" && m.text)
         .slice(-16)
         .map((m) => ({ from: m.from, text: m.text }));
     let left = MAX_FOLLOWUPS;
-    let lead = "";
+    let lead = resume ? "Gut, dann schriftlich weiter." : "";
     // Vorschläge: Kompass leitet sie aus dem bisherigen Gespräch ab. Die festen Demo-Chips
     // erscheinen nur, solange alle Antworten bisher genau die Demo-Antworten waren.
-    let demoPath = true;
+    let demoPath = !resume;
     let suggested: string[] = [];
     let phrased = "";
     for (let i = 0; i < OB_QUESTIONS.length; i++) {
       const q = OB_QUESTIONS[i];
+      if (answers[q.key]) continue;
       const next = OB_QUESTIONS[i + 1];
       const asked = phrased || q.q;
       setObStep(i + 1);
@@ -322,6 +340,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         );
       }
       answers[q.key] = answer;
+      if (takeover.current) throw new VoiceTakeover();
       lead = r.reaction;
       phrased = (r.nextQuestion || "").trim();
       if (phrased && !phrased.endsWith("?")) phrased = "";
@@ -335,6 +354,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     let card = fallback.profile(answers);
     for (;;) {
       card = await ai("profile", { answers, correction }, fallback.profile(answers, correction));
+      obRef.current.card = card;
       await say(lead ? `${lead} ${card.intro}` : card.intro, 200);
       lead = "";
       push({ from: "bot", kind: "profile", data: { card } });
@@ -348,6 +368,21 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
       lead = "Danke, ich passe es an.";
     }
 
+    const { w, focus } = await completeOnboarding(name, answers, card, demoPath);
+    await say(w.summary, 300);
+    push({ from: "bot", kind: "summary", data: { focus } });
+    await say(`Dein erster Schritt: **${w.firstStep}**. Wollen wir direkt loslegen, oder schaust du erst in deine Ziele?`);
+    const next = await ask(["Loslegen", "Ziele ansehen"]);
+    if (/ziele/i.test(next)) {
+      openReise("home");
+      await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
+    } else {
+      await say("Super. Steht bei dir gerade etwas an, eine Fallbesprechung oder ein Termin?");
+    }
+  }
+
+  /** Abschluss des Kennenlernens (Text und Sprache): Profil speichern, Lernpfad und Fokus erzeugen. */
+  async function completeOnboarding(name: string, answers: Partial<Profile>, card: ProfileOut, demoPath: boolean) {
     const profile: Profile = {
       name,
       role: answers.role || "",
@@ -393,18 +428,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
         return sk ? { name: sk.name, pct: skillProgress(sk), color: area?.color } : null;
       })
       .filter(Boolean) as { name: string; pct: number; color?: string }[];
-    await say(w.summary, 300);
-    push({ from: "bot", kind: "summary", data: { focus } });
     addXP(50, { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    await say(`Dein erster Schritt: **${w.firstStep}**. Wollen wir direkt loslegen, oder schaust du erst in deine Ziele?`);
-    const next = await ask(["Loslegen", "Ziele ansehen"]);
-    if (/ziele/i.test(next)) {
-      openReise("home");
-      await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
-    } else {
-      await say("Super. Steht bei dir gerade etwas an, eine Fallbesprechung oder ein Termin?");
-    }
+    return { w, focus, path: own };
   }
 
   /** Folien (optional) und Generalprobe als eigener Screen. */
@@ -713,7 +739,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   }
 
   function checkDue() {
-    if (!isDue(sRef.current)) return;
+    if (voiceRef.current || !isDue(sRef.current)) return;
     if (tabRef.current !== "coach") {
       setUnread(true);
       return;
@@ -747,6 +773,151 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     else toast("Vorgemerkt");
   }
 
+  // ---------- Sprachgespräch (OpenAI Realtime) ----------
+  const textHistory = (n: number) =>
+    sRef.current.messages
+      .filter((m) => m.kind === "text" && m.text)
+      .slice(-n)
+      .map((m) => ({ from: m.from, text: m.text as string }));
+
+  async function voicePost<T>(body: Record<string, unknown>): Promise<T | null> {
+    try {
+      const res = await fetch("/api/realtime", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...body, state: { ...sRef.current, messages: [] } }),
+      });
+      return res.ok ? ((await res.json()) as T) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function toggleVoice() {
+    if (voiceRef.current) return stopVoice();
+    if (scriptRef.current) return toast("Sprachgespräch nur im Live-Modus");
+    if (voiceAvail.current === null) {
+      voiceAvail.current = await fetch("/api/realtime")
+        .then((r) => r.json())
+        .then((j) => Boolean(j.available))
+        .catch(() => false);
+    }
+    if (!voiceAvail.current) return toast("Sprachmodus noch nicht eingerichtet (OPENAI_API_KEY fehlt)");
+    const ph = sRef.current.phase;
+    const onboardingPhase = ph === "new" || ph === "onboarding";
+    if (onboardingPhase && obStep > OB_TOTAL + 1) return toast("Einen Moment, dein Lernpfad entsteht gerade");
+    if (busyRef.current && !onboardingPhase && !(ph === "ready" && pending.current)) return toast("Schließ erst den aktuellen Schritt ab");
+    const mode = onboardingPhase ? "onboarding" : "chat";
+    // Laufenden Text-Ablauf beenden: das Sprachgespräch übernimmt ab hier.
+    if (busyRef.current) {
+      takeover.current = true;
+      const abort = pendingAbort.current;
+      pending.current = null;
+      pendingAbort.current = null;
+      abort?.(new VoiceTakeover());
+    }
+    setChips([]);
+    setMulti(null);
+    if (onboardingPhase) {
+      if (!obRef.current.name) {
+        const guess = sRef.current.username.split(/[._\-\s@0-9]/)[0];
+        obRef.current = { name: guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase() || "du", answers: {} };
+      }
+      obRef.current.answers.name = obRef.current.name;
+      update((s) => {
+        s.phase = "onboarding";
+      });
+      setObStep(Math.min(OB_TOTAL, OB_QUESTIONS.filter((q) => obRef.current.answers[q.key]).length + 1));
+    }
+    const session = new VoiceSession({
+      onUserText: (text) => push({ from: "me", kind: "text", text }),
+      onBotText: (text) => push({ from: "bot", kind: "text", text }),
+      onStatus: (status) => setVoice((v) => (v ? { ...v, status } : v)),
+      onTool: voiceTool,
+      onEnd: (error) => {
+        if (voiceRef.current === session) voiceRef.current = null;
+        setVoice(null);
+        takeover.current = false;
+        if (error) toast(error);
+        setIdleChips();
+        // Kennenlernen per Text fortsetzen, wo die Sprache aufgehört hat.
+        if (sRef.current.phase === "onboarding" && !busyRef.current) {
+          void runFlow(onboarding);
+        }
+      },
+    });
+    voiceRef.current = session;
+    setVoice({ mode, status: "connecting" });
+    // Ablauf im Hintergrund wartet ggf. noch auf eine KI-Antwort; neue Text-Abläufe starten erst nach dem Gespräch.
+    await session.start(async () => {
+      const out = await voicePost<{ token: string; model: string; error?: string }>({
+        action: "session",
+        mode,
+        name: onboardingPhase ? obRef.current.name : sRef.current.profile?.name,
+        answers: onboardingPhase ? obRef.current.answers : undefined,
+        history: textHistory(12),
+      });
+      if (!out?.token) throw new Error(out?.error || "Kein Token");
+      return out;
+    });
+  }
+
+  function stopVoice() {
+    const v = voiceRef.current;
+    voiceRef.current = null;
+    v?.stop();
+  }
+
+  async function voiceTool(name: string, args: Record<string, unknown>): Promise<string> {
+    const ob = obRef.current;
+    switch (name) {
+      case "antwort_speichern": {
+        const key = OB_QUESTIONS.find((q) => q.key === args.thema)?.key;
+        if (!key) return "Unbekanntes Thema.";
+        ob.answers[key] = String(args.antwort || "").trim();
+        const open = OB_QUESTIONS.filter((q) => !ob.answers[q.key]);
+        setObStep(Math.min(OB_TOTAL, OB_TOTAL - open.length + 1));
+        return open.length ? `Gespeichert. Noch offen: ${open.map((q) => q.key).join(", ")}.` : "Gespeichert. Alle Themen sind beantwortet, ruf jetzt profil_erstellen auf.";
+      }
+      case "profil_erstellen":
+      case "profil_anpassen": {
+        const open = OB_QUESTIONS.filter((q) => !ob.answers[q.key]);
+        if (open.length) return `Es fehlen noch Antworten zu: ${open.map((q) => q.topic).join("; ")}. Frag danach, bevor du das Profil erstellst.`;
+        const correction = name === "profil_anpassen" ? String(args.korrektur || "") : "";
+        const card = await ai<ProfileOut>("profile", { answers: ob.answers, correction }, fallback.profile(ob.answers, correction), true);
+        ob.card = card;
+        setObStep(OB_TOTAL + 1);
+        push({ from: "bot", kind: "profile", data: { card } });
+        setChips(["Passt", "Anpassen"]);
+        return `Die Profil-Karte ist jetzt auf dem Bildschirm. WER: ${card.wer.join(", ")}. WAS: ${card.was.join(", ")}. WIE: ${card.wie.join(", ")}. Lernziel: ${card.goal}. Nenne das Lernziel in einem Satz und frag „Stimmt das so?“`;
+      }
+      case "profil_bestaetigen": {
+        if (!ob.card) return "Es gibt noch keine Profil-Karte. Ruf zuerst profil_erstellen auf.";
+        setChips([]);
+        const { w, focus, path } = await completeOnboarding(ob.name, ob.answers, ob.card, false);
+        push({ from: "bot", kind: "summary", data: { focus } });
+        push({ from: "bot", kind: "link", data: { icon: "target", sub: "Dein Lernpfad", title: path.title, to: "pfad" } });
+        setVoice((v) => (v ? { ...v, mode: "chat" } : v));
+        const next = await voicePost<{ instructions: string; tools: unknown[] }>({ action: "instructions", mode: "chat", history: textHistory(8) });
+        if (next) voiceRef.current?.updateSession(next.instructions, next.tools);
+        setIdleChips();
+        return `Das Kennenlernen ist abgeschlossen, der Lernpfad „${path.title}“ ist erstellt und auf dem Bildschirm verlinkt. Fokus: ${w.summary} Erster Schritt: ${w.firstStep}. Sag das in 2 kurzen Sätzen und frag, ob gerade etwas ansteht, zum Beispiel eine Fallbesprechung oder ein Termin. Ab jetzt bist du im Coaching-Gespräch.`;
+      }
+      case "ziel_in_lernpfad": {
+        const out = await voicePost<{ goal: PathChallenge | null }>({ action: "goal", goal: args });
+        if (!out?.goal) return "Das Ziel ließ sich nicht übernehmen. Frag kurz nach, was genau die Person vorhat.";
+        addChatGoal(out.goal);
+        return `„${out.goal.title}“ steht jetzt im Lernpfad.`;
+      }
+      case "fachwissen_nachschlagen": {
+        const out = await voicePost<{ text: string }>({ action: "saa", query: String(args.thema || "") });
+        return out?.text || "Nachschlagen hat nicht geklappt. Verweise auf die SAA und BPR 2025.";
+      }
+      default:
+        return "Unbekanntes Werkzeug.";
+    }
+  }
+
   // ---------- input ----------
   function submit(text: string) {
     const t = text.trim();
@@ -755,9 +926,18 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     push({ from: "me", kind: "text", text: t });
     setChips([]);
     setMulti(null);
+    // Im Sprachgespräch geht Getipptes an Kompass; Abläufe mit eigenen Karten beenden das Gespräch.
+    const v = voiceRef.current;
+    if (v && !pending.current) {
+      const ph = sRef.current.phase;
+      const flow = /zeitsprung|(lernreise|ziele) ansehen|generalprobe starten/i.test(t) || ((ph === "ready" || ph === "done") && PRESENT_RE.test(t));
+      if (!flow || ph === "onboarding") return v.sendText(t);
+      stopVoice();
+    }
     const p = pending.current;
     if (p) {
       pending.current = null;
+      pendingAbort.current = null;
       p(t);
       return;
     }
@@ -801,6 +981,8 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     };
     window.addEventListener("keydown", onKey);
     return () => {
+      voiceRef.current?.stop();
+      voiceRef.current = null;
       clearInterval(iv);
       window.removeEventListener("keydown", onKey);
     };
@@ -818,6 +1000,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
 
   /** Konversation neu starten: Profil zurücksetzen, Username bleibt. */
   async function restart() {
+    stopVoice();
     blockSave.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     const fresh = initialState(S.username);
@@ -1043,21 +1226,29 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                     )}
                   </div>
                   <form
-                    className="inp"
+                    className={`inp${voice ? ` voice ${voice.status}` : ""}`}
                     onSubmit={(e) => {
                       e.preventDefault();
-                      submit(input);
+                      // Leeres Feld: Sprachgespräch starten bzw. beenden. Mit Text: wie bisher senden.
+                      if (input.trim()) submit(input);
+                      else void toggleVoice();
                     }}
                   >
                     <Input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder={placeholder}
+                      placeholder={voice ? VOICE_LABEL[voice.status] : placeholder}
                       aria-label="Nachricht"
                       className="rounded-full bg-transparent px-3 shadow-none focus-visible:ring-0"
                     />
-                    <Button type="submit" size="icon" className="size-[38px] shadow-none" aria-label="Senden" disabled={!input.trim()}>
-                      <Icon name="send" />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="send size-[38px] shadow-none"
+                      aria-label={input.trim() ? "Senden" : voice ? "Sprachgespräch beenden" : "Sprachgespräch starten"}
+                      title={input.trim() ? "Senden" : voice ? "Sprachgespräch beenden" : "Sprechen statt tippen"}
+                    >
+                      <Icon name={input.trim() ? "send" : voice ? "stop" : "mic"} />
                     </Button>
                   </form>
                 </section>

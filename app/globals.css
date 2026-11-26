@@ -407,6 +407,40 @@
   .inp input::placeholder {
     color: var(--t2);
   }
+  /* Sprachgespräch: Knopf pulsiert, solange Kompass zuhört oder spricht */
+  .inp.voice .send {
+    background: var(--acc);
+    color: #fff;
+  }
+  .inp.voice input::placeholder {
+    color: var(--acc);
+    font-weight: 600;
+  }
+  .inp.voice.listening .send,
+  .inp.voice.hearing .send,
+  .inp.voice.speaking .send {
+    animation: voice-pulse 1.4s ease-out infinite;
+  }
+  .inp.voice.hearing .send {
+    animation-duration: 0.8s;
+  }
+  .inp.voice.connecting .send,
+  .inp.voice.thinking .send {
+    opacity: 0.75;
+  }
+  @keyframes voice-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 45%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 12px color-mix(in srgb, var(--acc) 0%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .inp.voice .send {
+      animation: none !important;
+    }
+  }
   .tag {
     font-size: 10.5px;
     font-weight: 700;
