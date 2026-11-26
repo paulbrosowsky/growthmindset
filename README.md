@@ -46,6 +46,7 @@ In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für
 ## Aufbau
 
 - `lib/knowledge.ts`: Unternehmenskontext DRK-Kreisverband Musterstadt e. V. (fiktiv, Quelle `docs/DRK_Personalentwicklung_Demodaten.md`): Kompetenzmodell mit Stufen 1 bis 4, 9 Jobprofile mit Soll-Stufen, Fortbildungen F01 bis F15, Pflichtschulungen P01 bis P05, Demo-Persona Max Müller. Geht als JSON in den System-Prompt (`knowledgeJSON`).
+- `lib/saa.ts`, `lib/saaServer.ts`: SAA und BPR 2025 (ÄLRD, Stand Juli 2025) als fachliche Grundlage für den Rettungsdienst. Das Verzeichnis geht in den Kontext, passende Seiten werden je Chat oder Folienentwurf als Auszug mitgeschickt, Challenges verweisen per `refs` darauf. Volltext in `docs/`, neu erzeugen mit `python3 scripts/build-saa.py`.
 - `lib/claude.ts`: Claude-Aufrufe mit Structured Outputs, Prompt Caching und serverseitigem Fallback
 - `app/api/ai/route.ts`: die KI-Aufgaben (Begrüßung, Vorschläge, Slides, Videoanalyse, Reflexion, Kollegen-Feedback, Lernpfad-Update, freier Chat)
 - `lib/fallbacks.ts`: Skript-Antworten, wenn die KI nicht verfügbar ist
