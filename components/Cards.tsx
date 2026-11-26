@@ -160,7 +160,7 @@ export function SummaryCard({ focus }: { focus: { name: string; pct: number; col
             <Ring size={38} width={4} pct={f.pct} color={f.color || "var(--p1)"}>
               <b style={{ fontSize: 10 }}>{f.pct}</b>
             </Ring>
-            <span>{f.name}</span>
+            <span>{f.name.replace(/(management|analyse|führung)/i, "\u00AD$1")}</span>
           </div>
         ))}
       </div>

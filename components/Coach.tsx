@@ -5,7 +5,7 @@ import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import type { VideoResult } from "./VideoRecorder";
 import Rehearsal, { type RehearsalState } from "./Rehearsal";
 import { LinkCard, OptionsCard, PeerAskCard, RichText, SlidesCard, SummaryCard } from "./Cards";
-import { AreaView, DemoSheet, ErfolgeView, Home, SkillUpdateView, TeamView } from "./views";
+import { AreaView, DemoSheet, Home, SkillUpdateView, TeamView } from "./views";
 import { Icon } from "./ui";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
@@ -16,7 +16,7 @@ import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string };
-type Tab = "coach" | "reise" | "team" | "erfolge";
+type Tab = "coach" | "reise" | "team";
 type Reise = { view: "home" | "area" | "update"; area: string; skill: string };
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
@@ -310,7 +310,14 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     push({ from: "bot", kind: "summary", data: { focus } });
     addXP(50, { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    await say("Sag mir einfach, wenn etwas ansteht.");
+    await say("Wollen wir direkt weitermachen, oder möchtest du erst deinen Lernpfad sehen?");
+    const next = await ask(["Weitermachen", "Lernpfad ansehen"]);
+    if (/lernpfad/i.test(next)) {
+      openReise("home");
+      await say("Schau dich in Ruhe um. Sag mir einfach, wenn etwas ansteht.", 600);
+    } else {
+      await say("Super. Steht bei dir gerade etwas an, eine Präsentation oder ein Termin?");
+    }
   }
 
   /** Folien (optional) und Generalprobe als eigener Screen. */
@@ -506,7 +513,6 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     const ph = sRef.current.phase;
     if (/zeitsprung/i.test(text)) return timeJump();
     if (/lernreise ansehen/i.test(text)) return openReise("home");
-    if (/erfolge ansehen/i.test(text)) return setTab("erfolge");
     if (/generalprobe starten/i.test(text) && sRef.current.presentation) {
       await practice(sRef.current.presentation.topic, false);
       return;
@@ -765,7 +771,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                           <small>{obStep > OB_TOTAL ? "Lernpfad wird erstellt" : `Frage ${Math.max(1, obStep || 1)} von ${OB_TOTAL}`}</small>
                         </div>
                       </div>
-                      <Progress className="bar thin" value={(Math.min(OB_TOTAL, Math.max(1, obStep || 1)) / OB_TOTAL) * 100} />
+                      <Progress className="bar thin mx-4 mt-2.5 w-auto" value={(Math.min(OB_TOTAL, Math.max(1, obStep || 1)) / OB_TOTAL) * 100} />
                     </>
                   ) : (
                     <div className="hd">
@@ -890,11 +896,6 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                 <TeamView state={S} />
               </Screen>
             )}
-            {tab === "erfolge" && (
-              <Screen k="erfolge">
-                <ErfolgeView state={S} now={nowD} />
-              </Screen>
-            )}
           </AnimatePresence>
 
           {showNav && (
@@ -904,7 +905,6 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
                   ["coach", "chat", "Coach"],
                   ["reise", "orb", "Reise"],
                   ["team", "team", "Team"],
-                  ["erfolge", "star", "Erfolge"],
                 ] as [Tab, string, string][]
               ).map(([id, icon, label]) => (
                 <button

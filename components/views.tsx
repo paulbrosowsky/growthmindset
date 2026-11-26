@@ -228,6 +228,7 @@ export function AreaView({
       </MCard>
 
       {rec && <RecCard r={rec} onClick={() => onRec(rec)} />}
+      <AreaBadges areaId={area.id} badges={state.badges} />
     </motion.div>
   );
 }
@@ -374,7 +375,7 @@ function Challenge({ value, week, dark }: { value: number; week?: React.ReactNod
   );
 }
 
-/* ---------------- Erfolge ---------------- */
+/* ---------------- Erfolge (pro Kompetenzbereich) ---------------- */
 
 const BADGE_ICON: Record<string, string> = { generalprobe: "cam", feedback: "team", loop: "orb", mutig: "star" };
 const BADGE_LABEL: Record<string, React.ReactNode> = {
@@ -390,80 +391,33 @@ const BADGE_LABEL: Record<string, React.ReactNode> = {
   mutig: "Mutig",
 };
 
-export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
-  const lvl = levelOf(state.xp);
-  const inLevel = state.xp % XP_PER_LEVEL;
-  const levelUp = state.badges.includes("loop");
-  const todayIdx = (now.getDay() + 6) % 7;
-  const monday = new Date(now);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() - todayIdx);
-  const active = new Set(
-    state.journal
-      .map((j) => new Date(j.date))
-      .filter((d) => d >= monday)
-      .map((d) => (d.getDay() + 6) % 7),
-  );
-  for (let d = 0; d < Math.min(todayIdx, 3); d++) active.add(d); // Demo: Lena war die Woche schon aktiv
-  const days = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-  const week = (
-    <div className="week" style={{ marginTop: 12 }}>
-      {days.map((d, i) => (
-        <span key={d} className={`day ${i === todayIdx ? "now" : ""}`}>
-          <i className={active.has(i) ? "" : "no"}>
-            <Icon name="fire" size={15} />
-          </i>
-          {d}
-        </span>
-      ))}
-    </div>
-  );
-  const ids = ["generalprobe", "feedback", "loop", "mutig"];
+/** Erfolge einer Reisekategorie: nur verdiente Badges, nur wenn es welche gibt. */
+const BADGE_AREA: Record<string, string> = { generalprobe: "komm", feedback: "komm", loop: "komm" };
+
+function AreaBadges({ areaId, badges }: { areaId: string; badges: string[] }) {
+  const ids = Object.keys(BADGE_AREA).filter((id) => BADGE_AREA[id] === areaId && badges.includes(id));
+  if (!ids.length) return null;
   return (
-    <motion.div className="scr" variants={STAGGER} initial="hidden" animate="show">
-      <div className="hd">
-        <div className="t">
-          Erfolge
-          <small>{longDate(now)}</small>
-        </div>
-        <span className="av">{initials(state.profile?.name || state.username)}</span>
+    <MCard variants={ITEM}>
+      <h3 style={{ fontSize: 14, marginBottom: 10 }}>Erfolge</h3>
+      <div className="row" style={{ justifyContent: "space-around" }}>
+        {ids.map((id, i) => (
+          <motion.span
+            key={id}
+            className="badge"
+            title={BADGES[id]?.text}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.15 + i * 0.06 }}
+          >
+            <i>
+              <Icon name={BADGE_ICON[id]} size={22} />
+            </i>
+            {BADGE_LABEL[id]}
+          </motion.span>
+        ))}
       </div>
-      <MCard variants={ITEM} className="row" style={{ gap: 14 }}>
-        <Ring size={72} width={7} pct={levelUp ? 100 : (inLevel / XP_PER_LEVEL) * 100} color="var(--acc)">
-          <b style={{ fontSize: 24 }}>{lvl}</b>
-        </Ring>
-        <div>
-          <span className="tag acc">{levelUp ? "Level-Up" : `${state.xp.toLocaleString("de-DE")} XP`}</span>
-          <b style={{ fontSize: 16, display: "block", marginTop: 2 }}>{levelUp ? `Level ${lvl} erreicht` : `Level ${lvl}`}</b>
-          <span className="mut">{levelUp ? "Loop geschlossen: geübt, angewendet, Feedback geholt." : `Noch ${XP_PER_LEVEL - inLevel} XP bis Level ${lvl + 1}.`}</span>
-        </div>
-      </MCard>
-      <MCard variants={ITEM}>
-        <h3 style={{ fontSize: 14, marginBottom: 10 }}>Badges</h3>
-        <div className="row between">
-          {ids.map((id, i) => {
-            const on = state.badges.includes(id);
-            return (
-              <motion.span
-                key={id}
-                className={`badge ${on ? "" : "off"}`}
-                style={on && i === 0 ? { ["--c" as string]: "var(--acc)" } : undefined}
-                title={BADGES[id]?.text}
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.15 + i * 0.06 }}
-              >
-                <i>
-                  <Icon name={BADGE_ICON[id]} size={22} />
-                </i>
-                {BADGE_LABEL[id]}
-              </motion.span>
-            );
-          })}
-        </div>
-      </MCard>
-      <Challenge value={state.teamChallenge} week={week} dark />
-    </motion.div>
+    </MCard>
   );
 }
 
