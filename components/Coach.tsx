@@ -16,7 +16,7 @@ import { BADGES, COMPANY, findSkill, levelOf, skillProgress } from "@/lib/knowle
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import type { AppState, Experience, LevelChange, Msg, PeerFeedback, Profile, Source } from "@/lib/types";
 
-type Toast = { id: string; text: string; kind: "xp" | "level" | "badge" | "info" };
+type Toast = { id: string; text: string; kind: "xp" | "level" | "badge" | "info"; n?: number };
 type Tab = "coach" | "reise" | "team" | "erfolge";
 
 const PRESENT_RE = /präsentier|präsentation|vortrag|pitch|presentation/i;
@@ -94,10 +94,17 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
 
   const now = () => new Date(Date.now() + sRef.current.timeOffsetMs);
 
-  const toast = (text: string, kind: Toast["kind"] = "info") => {
+  const toast = (text: string, kind: Toast["kind"] = "info", n0?: number) => {
     const id = uid();
-    setToasts((t) => [...t, { id, text, kind }].slice(-3));
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3800);
+    setToasts((q) => {
+      // Ein Toast gleichzeitig; XP-Punkte, die noch warten, werden zusammengezählt.
+      const last = q[q.length - 1];
+      if (kind === "xp" && last && last.kind === "xp" && q.length > 1) {
+        const n = (last.n || 0) + (n0 || 0);
+        return [...q.slice(0, -1), { ...last, n, text: `+${n} XP` }];
+      }
+      return [...q, { id, text, kind, n: n0 }].slice(-4);
+    });
   };
 
   const push = (m: Omit<Msg, "id">) => {
@@ -177,7 +184,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       s.xp += n;
       if (journal) s.journal.unshift({ ...journal, id: uid(), date: now().toISOString(), xp: n });
     });
-    toast(`+${n} XP · ${reason}`, "xp");
+    toast(`+${n} XP · ${reason}`, "xp", n);
     const after = levelOf(sRef.current.xp);
     if (after > before) setTimeout(() => toast(`Level ${after} erreicht!`, "level"), 900);
   };
@@ -245,19 +252,19 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     const guess = sRef.current.username.split(/[._-]/)[0];
     const nameChip = guess.charAt(0).toUpperCase() + guess.slice(1);
     await say(
-      `Hallo! Ich bin **Kompass**, dein persönlicher Lern-Coach bei ${COMPANY.short}. Ich helfe dir, direkt im Arbeitsalltag zu lernen: mit dem, was bei dir gerade ansteht, in kleinen Schritten.`,
+      "Hallo! Ich bin **Kompass**, dein Lern-Coach für den Arbeitsalltag.",
       400,
     );
-    await say("Lass uns kurz kennenlernen, das dauert etwa zwei Minuten. Wie darf ich dich nennen?");
+    await say("Zwei Minuten zum Kennenlernen. Wie heißt du?");
     const name = (await ask([nameChip], "Dein Vorname")).split(/[ ,]/)[0] || nameChip;
 
     setObStep(2);
-    await say(`Schön, dich kennenzulernen, ${name}! In welcher Rolle arbeitest du bei uns?`);
+    await say(`Hallo ${name}! Was ist deine Rolle?`);
     const role = await ask(["Produktmanagerin, Wärmepumpen-App", "Entwickler im Steuerungsteam", "Teamleiterin im Kundenservice"], "Rolle und Bereich");
 
     setObStep(3);
-    await say("Wie lange bist du schon dabei, und was hast du vorher gemacht?");
-    const tenureRaw = await ask(["Seit 8 Monaten, davor 3 Jahre Agentur", "Seit 4 Jahren", "Frisch nach dem Studium"]);
+    await say("Seit wann bist du dabei, und davor?");
+    const tenureRaw = await ask(["8 Monate, davor 3 Jahre Agentur", "4 Jahre", "Frisch nach dem Studium"]);
     const [tenure, ...rest] = tenureRaw.split(/,\s*davor\s*/i);
     const experience = rest.length ? `davor ${rest.join(", ")}` : tenureRaw;
 
@@ -266,22 +273,22 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     const challenge = await ask(["Vor großen Runden werde ich nervös", "Mir fehlt die Zeit zum Lernen", "Ich will fachlich tiefer einsteigen"]);
 
     setObStep(5);
-    await say("Danke für deine Offenheit. Das lässt sich gut trainieren. Wie lernst du am liebsten? Du kannst mehreres wählen.");
+    await say("Danke, das lässt sich gut trainieren. Wie lernst du am liebsten?");
     const preference = await askMulti(["Videos", "Praxis", "Lesen", "Austausch", "Workshops"], []);
 
     setObStep(6);
-    await say("Welche Themen interessieren dich besonders?");
+    await say("Welche Themen interessieren dich?");
     const interests = await ask(["Datenanalyse, Nachhaltigkeit, UX", "Technik und Software", "Führung und Teamarbeit"]);
 
     setObStep(7);
-    await say("Letzte Frage: Wo möchtest du in zwei Jahren stehen?");
+    await say("Letzte Frage: Wo willst du in zwei Jahren stehen?");
     const goal = await ask(["Ein eigenes Produktteam leiten", "Fachexpertin bzw. Fachexperte werden", "Weiß ich noch nicht genau"]);
 
     const profile: Profile = { name, role, tenure: tenure.trim(), experience, interests, challenge, preference, goal };
     update((s) => {
       s.profile = profile;
     });
-    await say("Danke! Ich gleiche dein Profil jetzt mit dem Kompetenzmodell und dem Soll-Profil deiner Rolle ab …", 300);
+    await say("Danke! Ich baue deinen Lernpfad …", 300);
     const w = await ai("welcome", {}, fallback.welcome(profile));
     update((s) => {
       s.summary = w.summary;
@@ -303,16 +310,14 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     await say(w.summary, 300);
     addXP(50, "Onboarding abgeschlossen", { kind: "Start", title: "Onboarding mit Kompass abgeschlossen" });
     award("start");
-    await say(
-      `Deinen Lernpfad findest du unter **Reise**: vier Kompetenzbereiche als Ringe, darin deine Skills. Erster Schritt diese Woche: ${w.firstStep}\n\nSag mir einfach, wenn bei dir etwas ansteht, zum Beispiel eine Präsentation, ein schwieriges Gespräch oder ein neues Thema.`,
-    );
+    await say("Sag mir einfach, wenn etwas ansteht.");
   }
 
   /** Slides (optional), Generalprobe per Video, Analyse, Fortschritt. */
   async function practice(topic: string, withSlides: boolean) {
     if (withSlides) {
       const deck = await ai("slides", { topic }, fallback.slides(topic));
-      await say(`Hier ist ein Entwurf mit ${deck.slides.length} Folien, mit Sprechernotizen. Die Notizen trainieren genau die Punkte, an denen du noch arbeitest.`, 200);
+      await say(`Hier ist ein Entwurf mit ${deck.slides.length} Folien und Sprechernotizen.`, 200);
       push({ from: "bot", kind: "slides", data: { slides: deck.slides } });
       update((s) => {
         if (s.presentation) s.presentation.slides = deck.slides;
@@ -320,7 +325,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       addXP(20, "Folienentwurf erstellt");
       await ask(["Übernehmen", "Passt, weiter zur Generalprobe"]);
     }
-    await say("Jetzt die Generalprobe: Nimm dich auf, wie du präsentierst. Zwei bis drei Minuten reichen, Einstieg und Schluss sind am wichtigsten.");
+    await say("Jetzt die Generalprobe. Zwei Minuten reichen.");
     const vidId = push({ from: "bot", kind: "video" });
     setChips([]);
     const vid = await waitCard<VideoResult>(vidId);
@@ -347,7 +352,6 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     const before = praesPct();
     applyLevels(analysis.levelChanges, ["Übung"]);
     const after = praesPct();
-    await say("Danke! Das ist mir aufgefallen:", 200);
     push({ from: "bot", kind: "feedback", data: { ...analysis, frames: vid.frames.length, before, after } });
     update((s) => {
       if (s.presentation) s.presentation.practiced = true;
@@ -355,11 +359,10 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     });
     addXP(80, "Generalprobe mit Videoanalyse", { kind: "Üben", title: "Generalprobe per Video", detail: analysis.tip });
     award("generalprobe");
-    await say("Diese Übung habe ich in deiner Lernreise vermerkt.", 300);
   }
 
   async function askTime() {
-    await say("Wann genau ist deine Präsentation? Dann melde ich mich danach bei dir.");
+    await say("Wann präsentierst du? Ich melde mich danach.");
     const when = await ask(["Morgen um 10:00", "Morgen um 14:30"], "z. B. morgen um 11 Uhr");
     const { at, label } = parseWhen(when, now());
     update((s) => {
@@ -370,13 +373,13 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       }
       s.phase = "waiting";
     });
-    await say(`Notiert: **${label}**. Ich frage danach, wie es gelaufen ist. Viel Erfolg, du bist gut vorbereitet!`);
+    await say(`Notiert: **${label}**. Viel Erfolg!`);
   }
 
   async function presentFlow() {
     const pct = praesPct();
     await say(
-      `Gut, dass du dich meldest! Beim Präsentieren bist du schon bei **${pct} %**, Struktur und Folien sitzen. Worum geht es, und wer hört zu?`,
+      `Gut, dass du dich meldest! Du stehst bei **${pct} %**. Worum geht es?`,
     );
     const topic = await ask([TOPIC_CHIP], "Thema und Publikum");
     update((s) => {
@@ -404,12 +407,12 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
         sk?.recs.unshift({ id: uid(), type: idx === 0 ? "Intern" : "Ressource", title: opt.title, meta: opt.detail, fresh: true });
       });
       addXP(15, "Lerninhalt ausgewählt", { kind: "Lernen", title: opt.title });
-      await say(`Gute Wahl, „${opt.title}“ liegt jetzt in deiner Lernreise. Am meisten bringt es aber, einmal laut zu üben. Magst du zusätzlich eine kurze Generalprobe aufnehmen?`);
+      await say(`„${opt.title}“ liegt in deiner Lernreise. Noch eine kurze Generalprobe?`);
       const more = await ask(["Ja, mit Slides", "Ja, ohne Slides", "Nein, das reicht"]);
       if (!/nein|reicht/i.test(more)) await practice(topic, /mit slides/i.test(more));
       return askTime();
     }
-    await say("Sehr gut, laut üben mit Aufnahme ist die wirksamste Vorbereitung. Hast du schon Folien, oder soll ich dir welche entwerfen?");
+    await say("Gute Wahl. Hast du schon Folien?");
     const sl = await ask(["Slides vorbereiten", "Ich habe schon Folien"]);
     await practice(topic, !/habe schon|schon folien/i.test(sl));
     await askTime();
@@ -426,18 +429,18 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       const d = new Date(p.at);
       note(`${WD[d.getDay()]}, ${fmtClock(new Date(d.getTime() + 75 * 60e3))} · nach deinem Termin`);
     }
-    await say(`Hey ${name}! Heute war deine Präsentation „${short}“. **Wie ist sie gelaufen?**`, 300);
+    await say(`Hey ${name}! **Wie lief deine Präsentation?**`, 300);
     const how = await ask(["Super", "Ganz gut", "Holprig"]);
     const r = await ai("react", { answer: how }, fallback.react(how));
     await say(r.text, 100);
     const good = await ask(["Der Einstieg mit der Kundenstory saß"], "Was hat gut geklappt?");
-    await say("Und was würdest du beim nächsten Mal anders machen?");
+    await say("Und was machst du nächstes Mal anders?");
     const bad = await ask(["Bei der Rückfrage zum Budget war ich hektisch"], "Was würdest du anders machen?");
     const ref = await ai("reflect", { how, good, bad }, fallback.reflect());
     await say(ref.text, 100);
     addXP(60, "Präsentation reflektiert", { kind: "Anwenden", title: `Präsentation gehalten: ${short}`, detail: `Gut: ${good} · Anders: ${bad}` });
 
-    await say("Magst du auch Feedback von deinen Kollegen? Ihre Kompass-Assistenten fragen kurz nach. Diese drei waren dabei:");
+    await say("Soll ich die drei Kollegen um Feedback bitten?");
     setChips([]);
     const selId = push({ from: "bot", kind: "peerSelect" });
     const names = await waitCard<string[] | null>(selId);
@@ -445,7 +448,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     if (names && names.length) {
       push({ from: "me", kind: "text", text: `Ja, frag ${names.map((n) => n.split(" ")[0]).join(", ")}.` });
       addXP(40, "Feedback angefragt", { kind: "Feedback", title: `Feedback angefragt bei ${names.length} Kollegen` });
-      await say("Anfragen sind raus. Ich sage Bescheid, sobald Antworten da sind …", 300);
+      await say("Anfragen sind raus …", 300);
       const out = await ai("peers", { names, topic, how, good, bad }, fallback.peers(names));
       feedback = out.feedback;
       for (const f of feedback) {
@@ -460,10 +463,9 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
       award("feedback");
     } else {
       push({ from: "me", kind: "text", text: "Später." });
-      await say("Alles klar, dann nehmen wir deine eigene Einschätzung.", 300);
+      await say("Alles klar.", 300);
     }
 
-    await say("Ich führe alles zusammen und aktualisiere deine Lernreise …", 300);
     const syn = await ai<SynthOut>("synth", { topic, how, good, bad, feedback }, fallback.synth());
     const before = praesPct();
     applyLevels(syn.levelChanges, feedback.length ? ["Selbst", "Kollegen"] : ["Selbst"]);
@@ -483,7 +485,7 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
     push({ from: "bot", kind: "loop" });
     addXP(50, "Learning Loop geschlossen", { kind: "Reflexion", title: "Learning Loop geschlossen, Lernpfad erweitert" });
     award("loop");
-    await say("Die neuen Vorschläge liegen in deiner Lernreise. Und was ich gelernt habe, merke ich mir für unsere nächsten Gespräche.");
+    await say("Loop geschlossen. Ich merke mir das für nächstes Mal.");
   }
 
   async function freeChat(text: string) {
@@ -576,6 +578,14 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
   function toggleMulti(o: string) {
     setMulti((m) => (m ? { ...m, selected: m.selected.includes(o) ? m.selected.filter((x) => x !== o) : [...m.selected, o] } : m));
   }
+
+  // Toast-Warteschlange: der vorderste verschwindet nach kurzer Zeit.
+  const headToast = toasts[0]?.id;
+  useEffect(() => {
+    if (!headToast) return;
+    const t = setTimeout(() => setToasts((q) => q.slice(1)), 1900);
+    return () => clearTimeout(t);
+  }, [headToast]);
 
   // ---------- lifecycle ----------
   useEffect(() => {
@@ -874,14 +884,14 @@ export default function Coach({ initial, live, onLogout }: { initial: AppState; 
 
         <div className="toasts" aria-live="polite">
           <AnimatePresence initial={false}>
-            {toasts.map((t) => (
+            {toasts.slice(0, 1).map((t) => (
               <motion.div
                 key={t.id}
                 layout
                 className={`toast ${t.kind}`}
                 initial={{ opacity: 0, y: -16, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: t.kind === "badge" || t.kind === "level" ? [0.9, 1.08, 1] : 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.18 } }}
+                exit={{ opacity: 0, y: -8, scale: 0.95, transition: { duration: 0.18 } }}
                 transition={{ type: "spring", stiffness: 420, damping: 26 }}
               >
                 {t.text}

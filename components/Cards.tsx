@@ -128,7 +128,6 @@ export function FeedbackCard({
 }) {
   return (
     <motion.div className="stack" variants={STAGGER} initial="hidden" animate="show">
-      {frames ? <span className="pill-note">Analysiert aus {frames} Standbildern und Transkript</span> : null}
       <MCard variants={ITEM} className="fb">
         <span className="ck">
           <Icon name="check" size={14} />
@@ -248,7 +247,6 @@ export function UpdateCard({
           <span className="xp" style={{ display: "block" }}>
             +{after - before} % durch diese Erfahrung
           </span>
-          <span className="mut xs">Aus Aktivitäten, Selbstbild und Feedback der Kollegen</span>
         </div>
       </MCard>
       {learned && (
@@ -265,12 +263,14 @@ export function UpdateCard({
       <motion.b variants={ITEM} className="sect">
         Neue Vorschläge
       </motion.b>
-      {recs.map((r, i) => (
+      {recs.slice(0, 2).map((r, i) => (
         <motion.div key={i} variants={ITEM} className={`card sug ${r.type === "Üben" ? "hot" : ""}`}>
           <span className="tx">
-            <Tag accent={r.type === "Üben"}>{r.type === "Intern" ? "Lernen" : r.type}</Tag>
+            <Tag accent={r.type === "Üben"}>
+              {r.type === "Intern" ? "Lernen" : r.type}
+              {r.why && r.why.length <= 14 ? ` · ${r.why}` : ""}
+            </Tag>
             <b>{r.title}</b>
-            <span className="mut xs">{r.why}</span>
           </span>
           <Badge variant="accent">neu</Badge>
         </motion.div>
@@ -279,7 +279,7 @@ export function UpdateCard({
   );
 }
 
-const LOOP = ["Lücke erkannt", "Anlass im Alltag", "Geübt", "Angewendet", "Reflektiert", "Feedback geholt", "Neue Vorschläge"];
+const LOOP = ["Geübt", "Angewendet", "Reflektiert", "Feedback", "Neue Ziele"];
 
 export function LoopCard() {
   return (

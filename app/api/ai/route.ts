@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     switch (task) {
       case "welcome": {
         const out = await ask<ReturnType<typeof fallback.welcome>>(
-          `${ctx}\n\nDas Onboarding ist abgeschlossen, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 2 bis 3 Sätze direkt an ${name}, die Rolle, Ziel und Challenge aufgreifen und zeigen, worauf der Lernpfad aufbaut und wohin er führt.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt für diese Woche aus dem Arbeitsalltag (70-Prozent-Lernen), ein Satz.`,
+          `${ctx}\n\nDas Onboarding ist abgeschlossen, du erstellst jetzt den persönlichen Lernpfad.\nsummary: 1 kurzer Satz an ${name} (max. 15 Wörter), der Fokus des Lernpfads.\nfocus: genau 3 Skill-IDs aus dem Kompetenzmodell, die für Rolle und Ziel jetzt am meisten bringen. „praes“ ist immer dabei.\nfirstStep: ein kleiner, konkreter erster Schritt aus dem Arbeitsalltag, Stichwort, max. 6 Wörter.`,
           obj({ summary: str, focus: strArr, firstStep: str }),
         );
         if (out && !out.focus.includes("praes")) out.focus = ["praes", ...out.focus].slice(0, 3);
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       }
       case "prep": {
         const out = await ask<ReturnType<typeof fallback.prep>>(
-          `${ctx}\n\n${name} hat gesagt, morgen eine Präsentation zu halten, und möchte sich vorbereiten. Thema und Publikum: „${payload.topic}“.\ntext: 2 Sätze. Würdige den Fortschritt im Skill Präsentieren (${praesPct} %), nenne konkret, worauf es bei dieser Präsentation ankommt, bezogen auf die schwächsten Teilkompetenzen. Ende mit einer Überleitung zu drei Vorschlägen (ohne sie zu nennen).\noptions: genau 3 in dieser Reihenfolge: kind "video" (kurzes Grundlagen-Video), kind "read" (etwas zum Lesen), kind "practice" (eigenes Video aufnehmen und üben, mit Feedback von dir). title: kurz und konkret auf das Thema bezogen, max. 60 Zeichen. detail: Dauer oder Nutzen, max. 60 Zeichen.`,
+          `${ctx}\n\n${name} hat gesagt, morgen eine Präsentation zu halten, und möchte sich vorbereiten. Thema und Publikum: „${payload.topic}“.\ntext: max. 20 Wörter. Würdige kurz den Fortschritt im Skill Präsentieren (${praesPct} %) und leite zu drei Wegen über, z. B. „Drei Wege bis morgen, du entscheidest:“.\noptions: genau 3 in dieser Reihenfolge: kind "video" (kurzes Grundlagen-Video), kind "read" (etwas zum Lesen), kind "practice" (eigenes Video aufnehmen und üben, mit Feedback von dir). title: max. 40 Zeichen. detail: nur die Dauer, z. B. „12 min“.`,
           obj({
             text: str,
             options: { type: "array", items: obj({ kind: { type: "string", enum: ["video", "read", "practice"] }, title: str, detail: str }) },
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       }
       case "slides": {
         const out = await ask<ReturnType<typeof fallback.slides>>(
-          `${ctx}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit Storytelling-Bogen: Einstieg mit einer kurzen Geschichte, Kernaussage, Zahlen mit Bedeutung, Risiken und Optionen, klare Bitte am Ende. title max. 50 Zeichen, bullets: genau 3 Stichpunkte mit je max. 45 Zeichen, note: Sprechernotiz mit 1 bis 2 Sätzen, die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Zahlen, nutze Platzhalter wie „Kennzahl X“.`,
+          `${ctx}\n\nErstelle einen Folienentwurf für die Präsentation „${payload.topic}“. Genau 5 Folien mit Storytelling-Bogen: Einstieg mit einer kurzen Geschichte, Kernaussage, Zahlen mit Bedeutung, Risiken und Optionen, klare Bitte am Ende. title max. 32 Zeichen, bullets: genau 3 Stichpunkte mit je max. 30 Zeichen, note: Sprechernotiz in 1 kurzen Satz (max. 14 Wörter), die gezielt die schwachen Teilkompetenzen trainiert (z. B. Pause, Blickkontakt, Umgang mit Rückfragen). Erfinde keine konkreten Zahlen, nutze Platzhalter wie „Kennzahl X“.`,
           obj({ slides: { type: "array", items: obj({ title: str, bullets: strArr, note: str }) } }),
           { maxTokens: 3000 },
         );
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         const frames: string[] = (payload.frames || []).slice(0, 6);
         const transcript: string = (payload.transcript || "").slice(0, 6000);
         const out = await ask<ReturnType<typeof fallback.video>>(
-          `${ctx}\n\nDas ist eine Generalprobe: ${name} hat sich bei der Übung der Präsentation „${payload.topic}“ selbst aufgenommen. Dauer: ${Math.round(payload.duration || 0)} Sekunden. Du siehst ${frames.length} Standbilder aus dem Video in zeitlicher Reihenfolge.\nTranskript der Spracherkennung: ${transcript ? `„${transcript}“` : "(keins vorhanden, äußere dich dann nicht zum Gesagten)"}\n\nBewerte nur, was du in den Bildern siehst (Haltung, Blickkontakt zur Kamera, Gestik, Mimik, Licht und Bildausschnitt) und was im Transkript steht (Struktur, Einstieg, Schluss, Füllwörter, Länge). Ton und Stimme kannst du nicht hören, erfinde dazu nichts. Wenn die Bilder keine präsentierende Person zeigen, sag das freundlich in improve.\ngood: 3 konkrete Stärken, je 1 Satz. improve: 3 konkrete Verbesserungen, je 1 Satz, als nächster Lernschritt formuliert. tip: 1 Satz, was ${name} bis morgen noch üben soll.\nlevelChanges: nur Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen, nur wenn die Übung es begründet; sonst leer. reason kurz.`,
+          `${ctx}\n\nDas ist eine Generalprobe: ${name} hat sich bei der Übung der Präsentation „${payload.topic}“ selbst aufgenommen. Dauer: ${Math.round(payload.duration || 0)} Sekunden. Du siehst ${frames.length} Standbilder aus dem Video in zeitlicher Reihenfolge.\nTranskript der Spracherkennung: ${transcript ? `„${transcript}“` : "(keins vorhanden, äußere dich dann nicht zum Gesagten)"}\n\nBewerte nur, was du in den Bildern siehst (Haltung, Blickkontakt zur Kamera, Gestik, Mimik, Licht und Bildausschnitt) und was im Transkript steht (Struktur, Einstieg, Schluss, Füllwörter, Länge). Ton und Stimme kannst du nicht hören, erfinde dazu nichts. Wenn die Bilder keine präsentierende Person zeigen, sag das freundlich in improve.\ngood: genau 1 Eintrag, die wichtigste Stärke als Stichwort, max. 8 Wörter. improve: genau 1 Eintrag, der wichtigste nächste Lernschritt, max. 8 Wörter. tip: max. 10 Wörter, was ${name} bis morgen noch üben soll.\nlevelChanges: nur Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen, nur wenn die Übung es begründet; sonst leer. reason kurz.`,
           obj({ good: strArr, improve: strArr, tip: str, levelChanges }),
           { images: frames, maxTokens: 3000, effort: "medium" },
         );
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       }
       case "react": {
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nDie Präsentation ist vorbei. Du hast gefragt, wie sie gelaufen ist. Antwort von ${name}: „${payload.answer}“.\ntext: 1 bis 2 Sätze. Reagiere empathisch und passend auf die Antwort und frage dann, was gut geklappt hat. Nur eine Frage.`,
+          `${ctx}\n\nDie Präsentation ist vorbei. Du hast gefragt, wie sie gelaufen ist. Antwort von ${name}: „${payload.answer}“.\ntext: 1 kurzer Satz plus Frage, max. 15 Wörter. Reagiere empathisch und passend auf die Antwort und frage dann, was gut geklappt hat. Nur eine Frage.`,
           obj({ text: str }),
           { maxTokens: 800 },
         );
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       }
       case "reflect": {
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nReflexion nach der Präsentation. Wie lief es: „${payload.how}“. Was gut war: „${payload.good}“. Was ${name} anders machen würde: „${payload.bad}“.\ntext: 2 bis 3 Sätze. Würdige den Fortschritt (Growth Mindset, beziehe dich wenn passend auf die Generalprobe), formuliere die Schwäche als nächsten Lernschritt mit einem konkreten Tipp. Keine Frage am Ende.`,
+          `${ctx}\n\nReflexion nach der Präsentation. Wie lief es: „${payload.how}“. Was gut war: „${payload.good}“. Was ${name} anders machen würde: „${payload.bad}“.\ntext: max. 20 Wörter. Würdige den Fortschritt und gib einen konkreten Tipp zur Schwäche. Keine Frage.`,
           obj({ text: str }),
           { maxTokens: 1000 },
         );
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       case "peers": {
         const names: string[] = payload.names || [];
         const out = await ask<ReturnType<typeof fallback.peers>>(
-          `${ctx}\n\nSimuliere für die Demo die Rückmeldungen, die die Kompass-Assistenten dieser Kollegen eingeholt haben: ${names.join(", ")}. Sie haben die Präsentation „${payload.topic}“ gesehen. Selbsteinschätzung von ${name}: lief „${payload.how}“, gut war „${payload.good}“, anders machen würde sie/er „${payload.bad}“.\nfeedback: je Kollege ein Eintrag mit exakt dem Namen, stars 1 bis 5, text 2 Sätze nach SBI, konstruktiv, realistisch und unterschiedlich je Rolle. Die Kollegen bestätigen manches aus der Selbsteinschätzung, ergänzen aber auch einen Punkt, den ${name} nicht genannt hat.`,
+          `${ctx}\n\nSimuliere für die Demo die Rückmeldungen, die die Kompass-Assistenten dieser Kollegen eingeholt haben: ${names.join(", ")}. Sie haben die Präsentation „${payload.topic}“ gesehen. Selbsteinschätzung von ${name}: lief „${payload.how}“, gut war „${payload.good}“, anders machen würde sie/er „${payload.bad}“.\nfeedback: je Kollege ein Eintrag mit exakt dem Namen, stars 1 bis 5, text max. 10 Wörter, konkret und konstruktiv, realistisch und unterschiedlich je Rolle. Die Kollegen bestätigen manches aus der Selbsteinschätzung, ergänzen aber auch einen Punkt, den ${name} nicht genannt hat.`,
           obj({ feedback: { type: "array", items: obj({ name: str, stars: { type: "integer" }, text: str }) } }),
           { maxTokens: 2000 },
         );
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       }
       case "synth": {
         const out = await ask<ReturnType<typeof fallback.synth>>(
-          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: 2 Sätze an ${name}: was die Erfahrung zeigt und der klare nächste Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 5, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 3 neue Vorschläge nach 70/20/10: eine Übung oder Challenge im Arbeitsalltag (type "Üben"), ein internes Angebot aus dem Katalog (type "Intern"), ein externer Inhalt (type "Extern"). title max. 70 Zeichen, why 1 kurzer Satz mit Bezug zum Feedback.\nmemory: 2 bis 3 kurze Erkenntnisse über ${name}, die du dir für künftige Sessions merkst.`,
+          `${ctx}\n\nSchließe den Learning Loop nach der Präsentation „${payload.topic}“.\nSelbsteinschätzung: lief „${payload.how}“, gut: „${payload.good}“, anders machen: „${payload.bad}“.\nFeedback der Kollegen:\n${(payload.feedback || []).map((f: { name: string; stars: number; text: string }) => `- ${f.name} (${f.stars}/5): ${f.text}`).join("\n")}\n\nsummary: max. 10 Wörter an ${name}: Ergebnis und nächster Hebel.\nlevelChanges: Teilkompetenzen des Skills praes (IDs struktur, folien, story, koerper, fragen), neue Stufe höchstens 1 über der aktuellen und max. 5, nur wo Selbst- und Fremdeinschätzung es begründen. reason kurz mit Quelle.\nrecommendations: genau 3 neue Vorschläge nach 70/20/10: eine Übung oder Challenge im Arbeitsalltag (type "Üben"), ein internes Angebot aus dem Katalog (type "Intern"), ein externer Inhalt (type "Extern"). title max. 40 Zeichen, why nur Dauer oder Zeitpunkt, z. B. „45 min“ oder „diese Woche“.\nmemory: 2 bis 3 Erkenntnisse über ${name} als Stichworte, je max. 6 Wörter.`,
           obj({
             summary: str,
             levelChanges,
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       case "chat": {
         const history: { from: string; text: string }[] = payload.history || [];
         const out = await ask<{ text: string }>(
-          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\ntext: Deine Antwort als Lern-Coach, max. 4 Sätze, konkret und mit Bezug auf Lernpfad, Unternehmen oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
+          `${ctx}\n\nBisheriger Chat (Auszug):\n${history.map((h) => `${h.from === "me" ? name : "Kompass"}: ${h.text}`).join("\n")}\n\nNeue Nachricht von ${name}: „${payload.text}“\ntext: Deine Antwort als Lern-Coach, max. 2 kurze Sätze, konkret und mit Bezug auf Lernpfad, Unternehmen oder Lernmethoden. Wenn es passt, schlag einen kleinen nächsten Schritt vor.`,
           obj({ text: str }),
           { maxTokens: 1500 },
         );

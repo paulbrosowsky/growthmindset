@@ -18,18 +18,18 @@ export const fallback = {
   welcome(p: Profile | null): WelcomeOut {
     const name = p?.name || "du";
     return {
-      summary: `${name}, dein Lernpfad baut auf dem auf, was du schon kannst: Struktur und gute Folien sitzen. Damit du dein Ziel „${p?.goal || "dich weiterzuentwickeln"}“ erreichst, liegt der Fokus jetzt auf sicherem Auftreten vor großen Runden, Datenkompetenz und Moderation.`,
+      summary: `Dein Lernpfad steht, ${name}. Fokus: sicher auftreten, mit Daten erzählen, moderieren.`,
       focus: ["praes", "daten", "mod"],
-      firstStep: "Halte diese Woche im Team-Weekly einen 60-Sekunden-Pitch zu deinem aktuellen Projekt.",
+      firstStep: "60-Sekunden-Pitch im Team-Weekly",
     };
   },
   prep(topic: string, progress: number): PrepOut {
     return {
-      text: `Bei „${topic}“ kommt es vor allem auf eine klare Geschichte hinter den Zahlen und einen sicheren Auftritt an. Struktur und Folien beherrschst du schon (${progress} % geschafft), Luft nach oben hast du bei Storytelling mit Daten, Körpersprache und dem Umgang mit Rückfragen. Drei Wege, wie du die Zeit bis morgen nutzen kannst:`,
+      text: `Deine Struktur ist schon solide (${progress} %). Drei Wege bis morgen, du entscheidest:`,
       options: [
-        { kind: "video", title: "Grundlagen-Video: Präsentationsstruktur in 12 Minuten", detail: "Kurz und kompakt, ideal für heute Abend" },
-        { kind: "read", title: "Leitfaden lesen: Mit Zahlen Geschichten erzählen", detail: "10 Minuten Lesezeit im Intranet" },
-        { kind: "practice", title: "Selbst üben: Generalprobe mit Video", detail: "Du nimmst dich auf, ich gebe dir Feedback" },
+        { kind: "video", title: "Grundlagen der Präsentationsstruktur", detail: "12 min" },
+        { kind: "read", title: "Folienvorlage und Leitfaden", detail: "15 min" },
+        { kind: "practice", title: "Generalprobe mit Video", detail: "10 min" },
       ],
     };
   },
@@ -37,46 +37,38 @@ export const fallback = {
     return {
       slides: [
         {
-          title: topic.length > 60 ? topic.slice(0, 57) + "…" : topic,
-          bullets: ["Worum es heute geht", "Was wir erreicht haben", "Wo wir Ihre Entscheidung brauchen"],
-          note: "Starte mit einer kurzen Geschichte aus dem Alltag eines Kunden, nicht mit der Agenda.",
+          title: topic.split(/,| vor | der /)[0].slice(0, 32),
+          bullets: ["Worum es geht", "Was wir erreicht haben", "Was wir brauchen"],
+          note: "Mit einer Kundengeschichte starten, nicht mit der Agenda.",
         },
         {
           title: "Wo wir stehen",
-          bullets: ["Die eine Kennzahl, die zählt", "Plan gegen Ist", "Was besser lief als erwartet"],
-          note: "Eine Kernaussage pro Folie. Lies die Zahlen nicht vor, sondern sag, was sie bedeuten.",
+          bullets: ["Die Kennzahl, die zählt", "Plan gegen Ist", "Was besser lief"],
+          note: "Mit der Kernzahl starten. Dann kurz Pause.",
         },
         {
-          title: "Die Geschichte hinter den Zahlen",
-          bullets: ["Was wir gelernt haben", "Ein konkretes Beispiel", "Warum das für unser Ziel wichtig ist"],
-          note: "Hier gewinnt deine Story. Pause nach dem Beispiel und Blickkontakt halten.",
+          title: "Die Story hinter den Zahlen",
+          bullets: ["Was wir gelernt haben", "Ein Beispiel", "Warum es zählt"],
+          note: "Nach dem Beispiel Pause, Blickkontakt halten.",
         },
         {
           title: "Risiken und Optionen",
           bullets: ["Was uns bremsen kann", "Zwei Optionen mit Aufwand", "Unsere Empfehlung"],
-          note: "Rechne hier mit Rückfragen. Kurz Luft holen, Frage wiederholen, dann antworten.",
+          note: "Rückfragen erwarten: wiederholen, atmen, antworten.",
         },
         {
           title: "Unsere Bitte an Sie",
           bullets: ["Entscheidung heute", "Nächste Schritte", "Wer was bis wann"],
-          note: "Schließe mit einer klaren Bitte und schau dabei in die Runde, nicht auf die Folie.",
+          note: "Klare Bitte, Blick in die Runde.",
         },
       ],
     };
   },
   video(): VideoOut {
     return {
-      good: [
-        "Klarer Einstieg: Du nennst das Ziel in den ersten Sekunden.",
-        "Offene, aufrechte Haltung, die Hände sind sichtbar.",
-        "Ruhiges Tempo bei den Kernaussagen.",
-      ],
-      improve: [
-        "Dein Blick wandert oft zur Seite. Halte mehr Blickkontakt zur Kamera bzw. zum Publikum.",
-        "Bei den Zahlen wirst du schneller. Eine Kernaussage pro Folie und kurze Pausen helfen.",
-        "Der Schluss ist leise. Formuliere deine Bitte klar und mit fester Stimme.",
-      ],
-      tip: "Übe morgen früh nur Einstieg und Schluss laut, je 60 Sekunden. Das gibt Sicherheit für den Rest.",
+      good: ["Klarer Einstieg, ruhiges Tempo."],
+      improve: ["Mehr Blickkontakt, bei den Zahlen langsamer."],
+      tip: "Morgen früh nur Einstieg und Schluss laut üben.",
       levelChanges: [
         { sub: "koerper", level: 3, reason: "Generalprobe mit Videoanalyse" },
         { sub: "story", level: 3, reason: "Storyline mit Slides erarbeitet" },
@@ -85,14 +77,14 @@ export const fallback = {
   },
   react(mood: string): TextOut {
     if (/schwierig|schlecht|nicht/i.test(mood))
-      return { text: "Danke, dass du ehrlich bist. Gerade aus Situationen, die nicht rund laufen, lernt man am meisten. Was hat trotzdem gut geklappt?" };
+      return { text: "Danke für deine Ehrlichkeit. Was hat trotzdem gut geklappt?" };
     if (/gemischt|so lala|okay/i.test(mood))
-      return { text: "Gemischt ist ein ehrliches Ergebnis und eine gute Grundlage zum Lernen. Fangen wir mit dem Positiven an: Was hat gut geklappt?" };
-    return { text: "Super, das freut mich! Die Generalprobe hat sich offenbar gelohnt. Was hat besonders gut geklappt?" };
+      return { text: "Ehrliche Antwort. Was hat gut geklappt?" };
+    return { text: "Super, die Generalprobe hat sich gelohnt! Was lief besonders gut?" };
   },
   reflect(): TextOut {
     return {
-      text: "Stark, dass dein Einstieg so gut ankam, genau daran hast du bei der Generalprobe gearbeitet. Unsicherheit bei Rückfragen ist völlig normal und gut trainierbar: Frage kurz wiederholen, einmal durchatmen, dann antworten. Das nehmen wir als nächsten Schwerpunkt in deinen Lernpfad.",
+      text: "Stark, daran hast du gearbeitet. Rückfragen sind trainierbar: wiederholen, atmen, antworten.",
     };
   },
   peers(names: string[]): PeersOut {
@@ -100,45 +92,44 @@ export const fallback = {
       {
         name: "Jonas Krüger",
         stars: 4,
-        text: "Der rote Faden war von Anfang an klar und die Kundenstory hat alle abgeholt. Die Folie mit den Zahlen war mir etwas zu voll.",
+        text: "Roter Faden klar, die Kundenstory hat alle abgeholt.",
       },
       {
         name: "Aylin Demir",
         stars: 5,
-        text: "Du bist sehr sicher aufgetreten und hast viel Blickkontakt gehalten. Bei den Rückfragen hast du sehr schnell geantwortet, eine kurze Pause würde dir mehr Ruhe geben.",
+        text: "Sicherer Auftritt. Vor Antworten kurz Pause machen.",
       },
       {
         name: "Markus Weber",
         stars: 4,
-        text: "Gute Vorbereitung, die Kernbotschaft ist angekommen. Nächster Schritt: Rückfragen souveräner moderieren und die Entscheidung am Ende klarer einfordern.",
+        text: "Kernbotschaft kam an. Rückfragen souveräner moderieren.",
       },
     ];
     return { feedback: all.filter((f) => names.includes(f.name)) };
   },
   synth(): SynthOut {
     return {
-      summary:
-        "Deine Präsentation ist gut angekommen: Struktur, Einstieg und Auftreten wurden von dir und deinen Kollegen gelobt. Der klare nächste Hebel ist der Umgang mit Rückfragen.",
+      summary: "Gut angekommen. Nächster Hebel: Rückfragen.",
       levelChanges: [
         { sub: "story", level: 4, reason: "Kundenstory kam laut Kollegen sehr gut an" },
         { sub: "koerper", level: 4, reason: "Sicherer Auftritt und Blickkontakt (Aylin)" },
         { sub: "fragen", level: 2, reason: "Selbst- und Fremdeinschätzung: noch zu schnell bei Rückfragen" },
       ],
       recommendations: [
-        { type: "Intern", title: "E-Learning „Souverän mit Rückfragen umgehen“", why: "Dein nächster Hebel laut dir und deinen Kollegen, 45 Minuten" },
-        { type: "Üben", title: "Challenge: Moderiere die Fragerunde im nächsten Team-Weekly", why: "Rückfragen üben, wo es nichts kostet" },
-        { type: "Extern", title: "Meetup: Rhetorik-Stammtisch Stuttgart", why: "Monatlich, Stegreif-Antworten in lockerer Runde trainieren" },
+        { type: "Intern", title: "Souverän mit Rückfragen umgehen", why: "45 min" },
+        { type: "Üben", title: "Fragerunde im Team-Weekly moderieren", why: "diese Woche" },
+        { type: "Extern", title: "Rhetorik-Stammtisch Stuttgart", why: "monatlich" },
       ],
       memory: [
-        "Präsentation zum Thema gehalten, Einstieg mit Kundenstory wirkt bei ihr sehr gut",
-        "Antwortet bei Rückfragen zu schnell, Pause vor der Antwort üben",
-        "Lernt gut durch Generalprobe mit Video",
+        "Einstieg mit Kundenstory wirkt",
+        "Bei Rückfragen zu schnell",
+        "Lernt gut mit Video-Generalprobe",
       ],
     };
   },
   chat(): TextOut {
     return {
-      text: "Gute Frage! Im Demo-Modus ohne KI kann ich dazu nichts Eigenes sagen. Schreib mir zum Beispiel „Ich muss morgen präsentieren“, dann zeige ich dir, wie ich dich vorbereite.",
+      text: "Im Skript-Modus kann ich das nicht frei beantworten. Probier: „Ich muss morgen präsentieren“.",
     };
   },
 };

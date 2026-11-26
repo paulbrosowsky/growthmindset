@@ -137,18 +137,6 @@ export function Home({
         </span>
         <Icon name="send" className="mut" />
       </motion.button>
-
-      {state.summary && (
-        <MCard variants={ITEM} className="soft">
-          <span className="mut xs">Dein Lernpfad</span>
-          <p>{state.summary}</p>
-          {state.firstStep && (
-            <p className="mut xs" style={{ marginTop: 6 }}>
-              Erster Schritt: {state.firstStep}
-            </p>
-          )}
-        </MCard>
-      )}
     </motion.div>
   );
 }
@@ -165,8 +153,9 @@ export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: A
   const pct = skillProgress(sk);
   const soll = targetLevel(sk.id, state.focus);
   const role = state.profile?.role?.split(",")[0] || "deine Rolle";
-  const hasPeers = sk.subs.some((s) => s.sources?.includes("Kollegen"));
+  const sources = Array.from(new Set(sk.subs.flatMap((s) => s.sources || []).filter((x) => x !== "Start")));
   const learned = state.memory[0];
+  const recs = [...sk.recs].sort((a, b) => Number(!!b.fresh) - Number(!!a.fresh) || Number(b.type === "Üben") - Number(a.type === "Üben")).slice(0, 2);
   return (
     <div className="scr">
       <div className="hd">
@@ -220,11 +209,10 @@ export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: A
                   ))}
                 </span>
               </div>
-              {(s.sources || []).some((x) => x !== "Start") && <span className="src">{(s.sources || []).filter((x) => x !== "Start").join(" · ")}</span>}
             </div>
           ))}
         </div>
-        {hasPeers && <p className="mut xs" style={{ marginTop: 10 }}>Fortschritt aus Aktivitäten, Selbstbild und Feedback der Kollegen.</p>}
+        {sources.length > 0 && <p className="src" style={{ marginTop: 12 }}>Aus {sources.join(" · ")}</p>}
       </Card>
 
       {learned && sk.id === "praes" && state.phase === "done" && (
@@ -239,8 +227,7 @@ export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: A
         </div>
       )}
 
-      {sk.recs.length > 0 && <b className="sect">Vorschläge</b>}
-      {sk.recs.map((r) => (
+      {recs.map((r) => (
         <div key={r.id} className={`card sug ${r.type === "Üben" ? "hot" : ""}`}>
           <span className={`ck ${r.type === "Üben" ? "a" : ""}`}>
             <Icon name={r.type === "Üben" ? "cam" : r.type === "Extern" ? "pin" : r.type === "Ressource" ? "book" : "vid"} size={14} />
@@ -248,10 +235,9 @@ export function AreaView({ state, areaId, skillId, onSkill, onBack }: { state: A
           <span className="tx">
             <Tag accent={r.type === "Üben"}>
               {recLabel(r.type)}
-              {r.meta ? ` · ${r.meta.split("·").pop()?.trim()}` : ""}
+              {r.meta && r.meta.length <= 12 ? ` · ${r.meta}` : r.why && r.why.length <= 14 ? ` · ${r.why}` : ""}
             </Tag>
             <b>{r.title}</b>
-            {r.why && <span className="mut xs">{r.why}</span>}
           </span>
           {r.fresh ? <Badge variant="accent">neu</Badge> : <span className="xp">+{r.type === "Üben" ? 80 : r.type === "Intern" ? 120 : 15}</span>}
         </div>
@@ -406,7 +392,7 @@ export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
         <Card>
           <h3 style={{ marginBottom: 6 }}>Was Kompass sich merkt</h3>
           <ul className="plain">
-            {state.memory.slice(0, 5).map((m, i) => (
+            {state.memory.slice(0, 3).map((m, i) => (
               <li key={i}>{m}</li>
             ))}
           </ul>
@@ -415,7 +401,7 @@ export function ErfolgeView({ state, now }: { state: AppState; now: Date }) {
       <Card>
         <h3 style={{ marginBottom: 6 }}>Erfahrungen</h3>
         <ul className="journal">
-          {state.journal.slice(0, 12).map((j) => (
+          {state.journal.slice(0, 5).map((j) => (
             <li key={j.id}>
               <span className="tag">{j.kind}</span>
               <b>{j.title}</b>
