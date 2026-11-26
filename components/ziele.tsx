@@ -88,7 +88,7 @@ const areaOf = (state: AppState, id: string) => state.areas.find((a) => a.id ===
 
 /* ---------------- Gemeinsame Bausteine ---------------- */
 
-function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent

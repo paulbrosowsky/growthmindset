@@ -103,6 +103,21 @@ export type Msg = {
   data?: any;
 };
 
+/** Erfolg, den die Person selbst mit ihrer Führungskraft geteilt hat. Nur das landet im Unternehmenssystem. */
+export type SharedSuccess = {
+  id: string;
+  date: string; // ISO
+  title: string;
+  /** Kompetenz aus dem Jobprofil, auf die der Erfolg einzahlt (optional freigegeben) */
+  competence?: string;
+  soll?: number;
+  /** Passende Fortbildung aus dem Katalog, z. B. „F06 Stressbewältigung und Resilienz“ */
+  training?: string;
+  note?: string;
+  /** Empfänger, z. B. „Thomas Weber, Wachenleitung“ */
+  to: string;
+};
+
 export type Phase = "new" | "onboarding" | "ready" | "waiting" | "done";
 
 export type AppState = {
@@ -126,6 +141,8 @@ export type AppState = {
   /** Wann das 4-Wochen-Lernziel vereinbart wurde */
   goalSetAt?: string;
   journal: Experience[];
+  /** Selbst freigegebene Erfolge (für die Unternehmenssicht) */
+  shared?: SharedSuccess[];
   memory: string[];
   phase: Phase;
   presentation: Presentation | null;

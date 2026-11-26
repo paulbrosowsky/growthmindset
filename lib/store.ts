@@ -58,3 +58,39 @@ export async function deleteState(username: string): Promise<void> {
   }
   await fs.rm(path.join(DIR, `${username}.json`), { force: true });
 }
+
+export type SharedEntry = { username: string; name: string; role: string; items: NonNullable<AppState["shared"]> };
+
+/** Alle selbst geteilten Erfolge (für die Unternehmenssicht). Nur Name, Rolle und die freigegebenen Einträge, nichts aus dem Coach. */
+/** „max.mueller“ → „Max Mueller“ */
+const prettyName = (u: string) =>
+  u
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((p) => p[0].toUpperCase() + p.slice(1))
+    .join(" ");
+
+export async function listShared(): Promise<SharedEntry[]> {
+  const pick = (username: string, st: Partial<AppState> | null): SharedEntry | null =>
+    st?.shared?.length ? { username, name: st.profile?.name || prettyName(username), role: st.profile?.role || "", items: st.shared } : null;
+  if (sql) {
+    await ensureTable();
+    const rows = (await sql`select username, jsonb_build_object('profile', state->'profile', 'shared', state->'shared') as st
+      from kompass_users where jsonb_array_length(coalesce(state->'shared', '[]'::jsonb)) > 0`) as { username: string; st: Partial<AppState> }[];
+    return rows.map((r) => pick(r.username, r.st)).filter((x): x is SharedEntry => !!x);
+  }
+  let files: string[] = [];
+  try {
+    files = (await fs.readdir(DIR)).filter((f) => f.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const out: SharedEntry[] = [];
+  for (const f of files) {
+    try {
+      const e = pick(f.slice(0, -5), JSON.parse(await fs.readFile(path.join(DIR, f), "utf8")));
+      if (e) out.push(e);
+    } catch {}
+  }
+  return out;
+}

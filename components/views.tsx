@@ -369,6 +369,7 @@ export function DemoSheet({
   setScript,
   onReset,
   onRestart,
+  onShare,
 }: {
   open: boolean;
   onClose: () => void;
@@ -379,6 +380,7 @@ export function DemoSheet({
   setScript: (v: boolean) => void;
   onReset: () => void;
   onRestart: () => void;
+  onShare: () => void;
 }) {
   const [qr, setQr] = useState("");
   useEffect(() => {
@@ -419,6 +421,18 @@ export function DemoSheet({
               Skript
             </button>
           </span>
+        </Card>
+        <Card className="row sheet-card">
+          <div style={{ flex: 1 }}>
+            <b>Unternehmenssicht</b>
+            <div className="mut xs">Erfolg teilen, dann Dashboard zeigen</div>
+          </div>
+          <Button className="h-8" variant="outline" onClick={onShare}>
+            Teilen
+          </Button>
+          <Button className="h-8" asChild>
+            <a href="/dashboard">Dashboard</a>
+          </Button>
         </Card>
         <Card className="row sheet-card" style={{ gap: 12 }}>
           {qr ? <span className="qr" dangerouslySetInnerHTML={{ __html: qr }} /> : <span className="qr" />}

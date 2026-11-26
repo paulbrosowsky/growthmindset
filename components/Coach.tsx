@@ -8,6 +8,7 @@ import { LinkCard, OptionsCard, PeerAskCard, ProfileSummaryCard, RichText, Slide
 import { AreaView, DemoSheet, KompetenzenView, SkillUpdateView, TeamView } from "./views";
 import { GoalsView, PathView, ProfileView, goalPath } from "./ziele";
 import { Icon } from "./ui";
+import { ShareSheet } from "./ShareSheet";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
@@ -16,7 +17,8 @@ import { addToPath, BADGES, demoPath as demoGoalPath, goalPathKey, profilePath, 
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
 import { OB_QUESTIONS } from "@/lib/onboarding";
 import { VoiceSession, type VoiceStatus } from "@/lib/voiceClient";
-import type { AppState, Experience, GoalPathState, PathChallenge, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
+import { shareDraft, type ShareDraft } from "@/lib/share";
+import type { AppState, Experience, SharedSuccess, GoalPathState, PathChallenge, LevelChange, Msg, PeerFeedback, Profile, Rec, Slide, Source } from "@/lib/types";
 
 type Toast = { id: string; text: string };
 type Tab = "coach" | "ziele" | "team";
@@ -60,6 +62,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   const [obStep, setObStep] = useState(0);
   const [unread, setUnread] = useState(false);
   const [sheet, setSheet] = useState(false);
+  const [share, setShare] = useState<ShareDraft | null>(null);
   const [script, setScriptState] = useState(false);
   const scriptRef = useRef(false);
   const [, setTick] = useState(0);
@@ -696,6 +699,25 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
     });
     addXP(CHALLENGE_XP[c.kind], { kind: c.kind === "Reflexion" ? "Reflexion" : c.kind === "Lernen" ? "Lernen" : c.kind === "Üben" ? "Üben" : "Anwenden", title: `Challenge „${c.title}“ geschafft` });
     toast(`${c.title} erledigt, +${CHALLENGE_XP[c.kind]} XP`);
+    // Größere Erfolge: anbieten, sie mit der Führungskraft zu teilen. Die Person entscheidet.
+    const after = goalPath(sRef.current, now());
+    if (after && after.cur === -1) setTimeout(() => setShare(shareDraft(sRef.current, `Lernpfad „${after.title}“ abgeschlossen`)), 900);
+    else if (c.kind === "Anwenden") setTimeout(() => setShare(shareDraft(sRef.current, `Challenge „${c.title}“ geschafft`)), 900);
+  }
+
+  /** Demo: „Erfolg teilen“ direkt zeigen, mit dem aktuellen Lernpfad als Erfolg. */
+  function shareDemo() {
+    setSheet(false);
+    const p = goalPath(sRef.current, now());
+    setTimeout(() => setShare(shareDraft(sRef.current, p?.title ? `Lernpfad „${p.title}“ abgeschlossen` : "Erste Challenge geschafft")), 300);
+  }
+
+  function shareSuccess(x: Omit<SharedSuccess, "id" | "date">) {
+    update((s) => {
+      s.shared = [{ ...x, id: uid(), date: now().toISOString() }, ...(s.shared ?? [])];
+    });
+    setShare(null);
+    toast(`Mit ${x.to.split(" ")[0]} geteilt`);
   }
 
   /** Lernpfad: Challenge mit Kompass im Coach vorbereiten. */
@@ -1361,6 +1383,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
           <Button variant="secondary" onClick={() => setSheet(true)}>
             Demo-Steuerung öffnen
           </Button>
+          <Button variant="secondary" asChild>
+            <a href="/dashboard">Unternehmenssicht öffnen</a>
+          </Button>
           <span className="mut xs">
             Angemeldet als <b>{S.username}</b> · {live && !script ? "KI live" : "Skript-Modus"}
           </span>
@@ -1376,7 +1401,9 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
           setScript={setScript}
           onReset={resetAll}
           onRestart={restart}
+          onShare={shareDemo}
         />
+        <ShareSheet draft={share} onClose={() => setShare(null)} onShare={shareSuccess} />
       </div>
     </MotionConfig>
   );

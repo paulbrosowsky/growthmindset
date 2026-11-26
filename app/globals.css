@@ -1573,3 +1573,91 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* ---------- Erfolg teilen ---------- */
+@layer components {
+  .share-to {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--g);
+    border-radius: 14px;
+    padding: 9px 11px;
+  }
+  .share-to > span:last-child {
+    display: grid;
+    line-height: 1.25;
+  }
+  .share-to small {
+    font-size: 11px;
+  }
+  .share-av {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--p3);
+    color: #fff;
+    font-weight: 800;
+    font-size: 11px;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .share-list {
+    display: grid;
+    gap: 8px;
+  }
+  .share-lbl {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--t2);
+  }
+  .share-ck {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .share-ck input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    flex: none;
+    accent-color: var(--acc);
+  }
+  .share-ck input:disabled {
+    opacity: 1;
+  }
+  .share-note {
+    display: grid;
+    gap: 4px;
+  }
+  .share-note textarea {
+    font: inherit;
+    font-weight: 500;
+    border: 1px solid var(--ln);
+    border-radius: 12px;
+    padding: 8px 10px;
+    resize: none;
+    background: var(--s);
+    color: var(--t);
+  }
+  .share-priv {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    background: var(--g);
+    border-radius: 14px;
+    padding: 9px 11px;
+    font-size: 12px;
+    color: var(--sl);
+    line-height: 1.4;
+  }
+  .share-priv svg {
+    flex: none;
+    margin-top: 1px;
+  }
+}
