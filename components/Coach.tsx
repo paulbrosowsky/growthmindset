@@ -34,7 +34,7 @@ const OB_QUESTIONS: { key: "role" | "experience" | "likes" | "learn" | "vision" 
   { key: "time", q: "Letzte Frage: Wann und wo passt Lernen in deinen Alltag?", chips: ["20 Minuten nach dem Daily", "Auf dem Weg zur Arbeit"] },
 ];
 const OB_TOTAL = OB_QUESTIONS.length;
-const MAX_FOLLOWUPS = 4;
+const MAX_FOLLOWUPS = 2;
 const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const TOPIC_FULL = "Q4-Roadmap der Wärmepumpen-App vor der Bereichsleitung, 15 Minuten";
 const PRESENT_CHIP = "Hey, ich muss morgen die Q4-Roadmap präsentieren.";
