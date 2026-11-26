@@ -36,20 +36,20 @@ Ohne Datenbank speichert Vercel Profile nur kurzlebig in `/tmp`. Für die Demo m
 ## Demo-Ablauf
 
 1. Username wählen (kein Passwort), kurzes Onboarding im Chat.
-2. Demo-Persona: Login `max.mueller`, Rolle „Notfallsanitäter“, dann die vorgeschlagenen Antworten antippen. Unter Ziele: Lernziel Fallvorstellung, Stellenprofil mit Lücken (Patientenversorgung, Belastbarkeit) und Fortbildungsvorschlag, Pflichtschulung P03 abgelaufen.
+2. Demo-Persona Lena Berger (19, FSJ auf der Rettungswache Nord, will im Herbst Rettungssanitäterin werden): Login `lena.berger`, Rolle „FSJlerin auf der Rettungswache“, dann die vorgeschlagenen Antworten antippen. Unter Ziele: Lernziel Fallvorstellung (Schlaganfall-Einsatz), Stellenprofil FSJ mit Lücke Kommunikation, Pflichtschulung P02 Hygiene offen.
 3. „Hey, ich muss morgen bei der Fallbesprechung einen Einsatz vorstellen“ → drei Vorschläge → Option 3 → „Slides vorbereiten“.
 4. Generalprobe aufnehmen (Kamera, Upload oder Beispiel-Analyse) → Feedback, Fortschritt steigt.
 5. Termin nennen, z. B. „Morgen um 10:00“.
 6. Demo-Steuerung öffnen (Logo im Coach lange drücken oder Rechtsklick, am Rechner auch Shift + Alt + D) → **Zeitsprung**: Auf der Reise-Seite erscheint die Nachfrage von LENA.
 7. Reflexion, Kollegen-Feedback anfragen (simuliert), Lernpfad wird erweitert, Level-Up.
 
-8. **Unternehmenssicht**: Nach einer „Anwenden“-Challenge oder dem ganzen Lernpfad fragt LENA „Erfolg teilen?“ (in der Demo-Steuerung auch direkt über „Teilen“). Max wählt, was die Wachenleitung sieht, Coach-Inhalte bleiben privat. Danach `/dashboard` öffnen (Demo-Steuerung → „Dashboard“): Der Erfolg erscheint bei der Wachenleitung. Oben rechts bzw. mit den Tasten 1 und 2 zwischen **Wachenleitung** und **Personalabteilung** (`/dashboard?view=hr`, nur zusammengefasste Werte) umschalten. Alle Kennzahlen dort sind Dummy-Daten (`lib/dashboardDemo.ts`), nur die geteilten Erfolge kommen live aus der App.
+8. **Unternehmenssicht**: Nach einer „Anwenden“-Challenge oder dem ganzen Lernpfad fragt LENA „Erfolg teilen?“ (in der Demo-Steuerung auch direkt über „Teilen“). Lena wählt, was die Wachenleitung sieht, Coach-Inhalte bleiben privat. Danach `/dashboard` öffnen (Demo-Steuerung → „Dashboard“): Der Erfolg erscheint bei der Wachenleitung. Oben rechts bzw. mit den Tasten 1 und 2 zwischen **Wachenleitung** und **Personalabteilung** (`/dashboard?view=hr`, nur zusammengefasste Werte) umschalten. Alle Kennzahlen dort sind Dummy-Daten (`lib/dashboardDemo.ts`), nur die geteilten Erfolge kommen live aus der App.
 
 In der Demo-Steuerung gibt es außerdem KI-Modus Live/Skript, einen QR-Code für die Jury und **Profil zurücksetzen**.
 
 ## Aufbau
 
-- `lib/knowledge.ts`: Unternehmenskontext DRK-Kreisverband Musterstadt e. V. (fiktiv, Quelle `docs/DRK_Personalentwicklung_Demodaten.md`): Kompetenzmodell mit Stufen 1 bis 4, 9 Jobprofile mit Soll-Stufen, Fortbildungen F01 bis F15, Pflichtschulungen P01 bis P05, Demo-Persona Max Müller. Geht als JSON in den System-Prompt (`knowledgeJSON`).
+- `lib/knowledge.ts`: Unternehmenskontext DRK-Kreisverband Musterstadt e. V. (fiktiv, Quelle `docs/DRK_Personalentwicklung_Demodaten.md`): Kompetenzmodell mit Stufen 1 bis 4, 9 Jobprofile mit Soll-Stufen, Fortbildungen F01 bis F15, Pflichtschulungen P01 bis P05, Demo-Persona Lena Berger. Geht als JSON in den System-Prompt (`knowledgeJSON`).
 - `lib/saa.ts`, `lib/saaServer.ts`: SAA und BPR 2025 (ÄLRD, Stand Juli 2025) als fachliche Grundlage für den Rettungsdienst. Das Verzeichnis geht in den Kontext, passende Seiten werden je Chat oder Folienentwurf als Auszug mitgeschickt, Challenges verweisen per `refs` darauf. Volltext in `docs/`, neu erzeugen mit `python3 scripts/build-saa.py`.
 - `lib/claude.ts`: Claude-Aufrufe mit Structured Outputs, Prompt Caching und serverseitigem Fallback
 - `app/api/ai/route.ts`: die KI-Aufgaben (Begrüßung, Vorschläge, Slides, Videoanalyse, Reflexion, Kollegen-Feedback, Lernpfad-Update, freier Chat)

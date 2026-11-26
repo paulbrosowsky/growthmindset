@@ -20,13 +20,13 @@ export const WACHE = { name: "Rettungswache Nord", size: 12, lead: { name: "Thom
 
 export const TEAM_ROWS: TeamMember[] = [
   {
-    name: "Max Müller",
-    initials: "MM",
-    role: "Notfallsanitäter",
-    gaps: ["Patientenversorgung", "Belastbarkeit"],
-    pflicht: { label: "P03 abgelaufen", status: "bad" },
+    name: "Lena Berger",
+    initials: "LB",
+    role: "FSJlerin",
+    gaps: ["Kommunikation"],
+    pflicht: { label: "P02 offen", status: "warn" },
     plan: { label: "In Bearbeitung", status: "info", detail: "Lernpfad Fallvorstellung" },
-    ist: { "Notfallmedizinisches Fachwissen": 4, Patientenversorgung: 3, Kommunikation: 3, Belastbarkeit: 2, Dokumentation: 3, Teamfähigkeit: 3 },
+    ist: { "Notfallmedizinisches Fachwissen": 1, Kommunikation: 1, Teamfähigkeit: 2, Lernbereitschaft: 3, Organisationsfähigkeit: 2, Verantwortungsbewusstsein: 2 },
   },
   {
     name: "Lisa Schneider",

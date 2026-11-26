@@ -75,8 +75,8 @@ export const fallback = {
   welcome(p: Profile | null): WelcomeOut {
     const name = p?.name || "du";
     return {
-      summary: `Dein Lernpfad steht, ${name}. Fokus: Fallvorstellung, Traumaversorgung, Belastbarkeit.`,
-      focus: ["praes", "patient", "resi"],
+      summary: `Dein Lernpfad steht, ${name}. Fokus: Fallvorstellung, Fachwissen, Lernroutine.`,
+      focus: ["praes", "notfall", "lernen"],
       firstStep: "Einsatz nach cABCDE aufbereiten",
     };
   },
@@ -100,17 +100,17 @@ export const fallback = {
         },
         {
           title: "Lage und Ersteindruck",
-          bullets: ["Unfallmechanismus", "Ersteindruck Patient", "Nachforderung Notarzt"],
+          bullets: ["Alarmierung und Meldebild", "Ersteindruck Patient", "Symptombeginn erfragen"],
           note: "Den Kernbefund zuerst nennen, dann kurz Pause.",
         },
         {
           title: "Versorgung nach cABCDE",
-          bullets: ["Kritische Blutung", "Atemweg und Atmung", "Kreislauf und Transport"],
+          bullets: ["Atemweg und Atmung", "Kreislauf", "Neurologie mit FAST"],
           note: "Bei jedem Schritt Blickkontakt in die Runde.",
         },
         {
           title: "Was gut lief, was nicht",
-          bullets: ["Absprachen im Team", "Zeit an der Einsatzstelle", "Übergabe im Schockraum"],
+          bullets: ["Absprachen im Team", "Zeit an der Einsatzstelle", "Übergabe nach SINNHAFT"],
           note: "Rückfragen erwarten: wiederholen, atmen, antworten.",
         },
         {
@@ -154,7 +154,7 @@ export const fallback = {
       {
         name: "Lisa Schneider",
         stars: 5,
-        text: "Die cABCDE-Folie hat mir als Azubi richtig geholfen.",
+        text: "Die FAST-Folie hat mir als Azubi richtig geholfen.",
       },
       {
         name: "Jonas Wagner",
