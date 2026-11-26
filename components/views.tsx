@@ -500,7 +500,7 @@ export function DemoSheet({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="mx-auto w-full max-w-[286px] gap-2.5 rounded-t-[28px] border-0 bg-card px-4 pt-2.5 pb-[18px] text-[13px]"
+        className="mx-auto w-full max-w-[var(--aw,286px)] gap-2.5 rounded-t-[28px] border-0 bg-card px-4 pt-2.5 pb-[18px] text-[13px]"
         style={{ zoom: "var(--z, 1)" }}
       >
         <i className="grab" />

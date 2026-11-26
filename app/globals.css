@@ -122,7 +122,7 @@
   }
   .app {
     position: relative;
-    width: 286px;
+    width: var(--aw, 286px);
     height: calc(100dvh / var(--z, 1));
     zoom: var(--z, 1);
     background: var(--g);
@@ -966,7 +966,7 @@
   }
   .gate-in {
     zoom: var(--z, 1);
-    width: 286px;
+    width: min(var(--aw, 286px), 340px);
     padding: 6px 16px 20px;
     display: flex;
     flex-direction: column;

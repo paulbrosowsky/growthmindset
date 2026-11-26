@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Die App ist auf 286 px Breite gestaltet (wie im Designkonzept) und wird auf die echte Breite skaliert. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){function f(){var w=window.innerWidth;var z=w>=900?1.35:Math.min(w,440)/286;document.documentElement.style.setProperty('--z',String(z))}f();window.addEventListener('resize',f)})();`,
+            __html: `(function(){function f(){var w=window.innerWidth,d=document.documentElement.style,z,a;if(w>=900){z=1.15;a=320}else{z=Math.min(1.1,w/286);a=Math.min(w,480)/z}d.setProperty('--z',String(z));d.setProperty('--aw',a+'px')}f();window.addEventListener('resize',f)})();`,
           }}
         />
       </head>
