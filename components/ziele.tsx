@@ -27,6 +27,7 @@ import {
   type Challenge,
 } from "@/lib/knowledge";
 import { saaLabel } from "@/lib/saa";
+import { suggestions, type Suggestion } from "@/lib/suggest";
 import type { AppState } from "@/lib/types";
 
 const Path3D = dynamic(() => import("./Path3D"), { ssr: false, loading: () => <div className="p3d p3d-off" /> });
@@ -152,6 +153,46 @@ function DotStrip({ path, state }: { path: GoalPath; state: AppState }) {
   );
 }
 
+/* ---------------- Passt zu deinen Zielen ---------------- */
+
+const SUGGEST_ICON: Record<Suggestion["kind"], string> = { uebung: "target", leitlinie: "book", fortbildung: "vid", kollege: "team", ressource: "book" };
+
+function SuggestRow({ state, path, onPick }: { state: AppState; path: GoalPath; onPick: (s: Suggestion) => void }) {
+  const list = suggestions(state, path);
+  if (!list.length) return null;
+  return (
+    <motion.section variants={ITEM} className="sgs" aria-label="Passt zu deinen Zielen">
+      <div className="sgh">
+        <h3>Passt zu deinen Zielen</h3>
+        <small>Zu deiner nächsten Challenge und deinen Lücken</small>
+      </div>
+      <div className="sgr">
+        {list.map((x) => {
+          const col = areaOf(state, x.area)?.color || "#6B6E76";
+          return (
+            <motion.button key={x.id} whileTap={{ scale: 0.97 }} className="sg" onClick={() => onPick(x)}>
+              <span className="row between" style={{ width: "100%" }}>
+                <span className="sgi" style={{ background: `color-mix(in srgb, ${col} 22%, #fff)` }}>
+                  <Icon name={SUGGEST_ICON[x.kind]} size={15} />
+                </span>
+                <span className="tag" style={{ ["--tc" as string]: col }}>
+                  <span style={{ color: "var(--t2)" }}>{x.label}</span>
+                </span>
+              </span>
+              <b className="sgt">{x.title}</b>
+              <span className="sgm">{x.meta}</span>
+              <span className="sgw">
+                <Icon name="send" size={11} />
+                <span>{x.why}</span>
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
 /* ---------------- Ziele (Übersicht) ---------------- */
 
 type DateItem = { id: string; at: Date; title: string; sub: string; kind: "pres" | "pflicht" | "ziel" | "termin"; allDay?: boolean };
@@ -192,9 +233,11 @@ export function GoalsView({
   onPractice,
   onFollowUp,
   followUpDue,
+  onSuggest,
 }: {
   state: AppState;
   now: Date;
+  onSuggest: (s: Suggestion) => void;
   onOpenPath: () => void;
   onOpenProfile: () => void;
   onMandatory: (id: string) => void;
@@ -320,6 +363,8 @@ export function GoalsView({
           <div className="mut xs">Dein Lernziel vereinbarst du mit LENA im Coach.</div>
         )}
       </MCard>
+
+      {path && <SuggestRow state={state} path={path} onPick={onSuggest} />}
 
       {/* Pflichtschulungen */}
       <Fold

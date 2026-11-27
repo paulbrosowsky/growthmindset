@@ -12,6 +12,7 @@ import { ShareSheet } from "./ShareSheet";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Progress } from "@/components/shadcn/progress";
+import type { Suggestion } from "@/lib/suggest";
 import { fallback, type ChatOut, type ProfileOut, type PrepOut, type SynthOut, type VideoOut } from "@/lib/fallbacks";
 import { addToPath, BADGES, demoPath as demoGoalPath, goalPathKey, profilePath, CHALLENGE_XP, COMPANY, findSkill, initialState, levelOf, MANDATORY, MAX_LEVEL, MANDATORY_DONE_DEFAULT, skillProgress, SOPS, TEAM, type Challenge } from "@/lib/knowledge";
 import { fmtClock, parseWhen, sleep, uid } from "@/lib/clientUtil";
@@ -721,6 +722,17 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
   }
 
   /** Lernpfad: Challenge mit LENA im Coach vorbereiten. */
+  /** „Passt zu deinen Zielen“: Fragen gehen an LENA im Coach, Fortbildungen werden vorgemerkt. */
+  function pickSuggestion(x: Suggestion) {
+    if (!x.prompt) {
+      toast(`${x.title} vorgemerkt`);
+      return;
+    }
+    setTab("coach");
+    if (busyRef.current || sRef.current.phase === "onboarding" || sRef.current.phase === "new") return;
+    submit(x.prompt);
+  }
+
   function prepChallenge(c: Challenge) {
     setTab("coach");
     if (busyRef.current || sRef.current.phase === "onboarding" || sRef.current.phase === "new") return;
@@ -1317,6 +1329,7 @@ export default function Coach({ initial, live, onLogout, onRestart }: { initial:
                     onPractice={startPractice}
                     onMandatory={doMandatory}
                     onOpenPath={() => setReise((r) => ({ ...r, view: "pfad" }))}
+                    onSuggest={pickSuggestion}
                     onOpenProfile={() => setReise((r) => ({ ...r, view: "profil" }))}
                   />
                 )}
